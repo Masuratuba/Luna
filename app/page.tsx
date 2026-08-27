@@ -1,4 +1,4 @@
-import LunaChat from "./components/LunaChat";
+import LunaChatSecure from "./components/LunaChatSecure";
 
 export default function Home() {
   return (
@@ -8,7 +8,7 @@ export default function Home() {
       <section className="luna-content">
         <header className="luna-brand">🌙 LUNA</header>
         <p className="luna-status"><span /> Bereit</p>
-        <LunaChat />
+        <LunaChatSecure />
       </section>
     </main>
   );
