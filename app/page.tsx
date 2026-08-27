@@ -1,9 +1,7 @@
-import Image from "next/image";
-
 export default function Home() {
   return (
     <main className="luna-shell">
-      <Image className="luna-background" src="/tuba.jpg" alt="" fill priority sizes="100vw" />
+      <div className="luna-background" aria-hidden="true" />
       <div className="luna-overlay" />
       <section className="luna-content">
         <div className="luna-brand">🌙 LUNA</div>
