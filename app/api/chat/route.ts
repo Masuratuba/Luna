@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getOpenAI } from "@/lib/openai";
+import { LUNA_SYSTEM_PROMPT } from "@/lib/luna/prompt";
 import { runLunaCore } from "@/lib/luna/core";
 
 export async function POST(request: Request) {
@@ -8,22 +10,19 @@ export async function POST(request: Request) {
     const conversationId = typeof body.conversationId === "string" ? body.conversationId : undefined;
     const userId = typeof body.userId === "string" ? body.userId : "";
 
-    if (!message) {
-      return NextResponse.json({ error: "message is required" }, { status: 400 });
-    }
+    if (!message) return NextResponse.json({ error: "message is required" }, { status: 400 });
+    if (!userId) return NextResponse.json({ error: "authentication required" }, { status: 401 });
 
-    if (!userId) {
-      return NextResponse.json({ error: "authentication required" }, { status: 401 });
-    }
-
-    const result = runLunaCore({ userId, message, conversationId });
-
-    return NextResponse.json({
-      ok: true,
-      decision: result.decision,
-      reply: "Luna Core is ready. AI response integration is the next layer.",
+    const core = runLunaCore({ userId, message, conversationId });
+    const response = await getOpenAI().responses.create({
+      model: process.env.OPENAI_MODEL || "gpt-5.6",
+      instructions: LUNA_SYSTEM_PROMPT,
+      input: message,
     });
-  } catch {
-    return NextResponse.json({ error: "invalid request" }, { status: 400 });
+
+    return NextResponse.json({ ok: true, decision: core.decision, reply: response.output_text });
+  } catch (error) {
+    console.error("Luna chat error", error);
+    return NextResponse.json({ error: "Luna could not process the request" }, { status: 500 });
   }
 }
