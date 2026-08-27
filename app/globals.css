@@ -4,7 +4,7 @@ body { font-family: Arial, Helvetica, sans-serif; background: #05070b; color: #f
 button, input, textarea { font: inherit; }
 
 .luna-shell { position: relative; min-height: 100vh; overflow: hidden; display: grid; place-items: center; isolation: isolate; }
-.luna-background { position: absolute; inset: 0; z-index: -3; background-image: url("https://raw.githubusercontent.com/Masuratuba/Luna/main/tuba.jpg"); background-size: cover; background-position: center; background-repeat: no-repeat; }
+.luna-background { position: absolute; inset: 0; z-index: -3; background-image: url("/tuba.jpg"); background-size: cover; background-position: center; background-repeat: no-repeat; }
 .luna-overlay { position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(0,0,0,.36), rgba(0,0,0,.78)); }
 .luna-content { width: min(900px, 92vw); padding: 42px 0 32px; text-align: center; }
 .luna-brand { font-size: clamp(42px, 9vw, 78px); font-weight: 800; letter-spacing: .04em; text-shadow: 0 4px 30px rgba(0,0,0,.7); }
