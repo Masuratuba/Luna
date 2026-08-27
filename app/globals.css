@@ -5,12 +5,29 @@ button, input, textarea { font: inherit; }
 
 .luna-shell { position: relative; min-height: 100vh; overflow: hidden; display: grid; place-items: center; isolation: isolate; }
 .luna-background { position: absolute; inset: 0; z-index: -3; background-image: url("https://raw.githubusercontent.com/Masuratuba/Luna/main/tuba.jpg"); background-size: cover; background-position: center; background-repeat: no-repeat; }
-.luna-overlay { position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(0,0,0,.38), rgba(0,0,0,.72)); }
-.luna-content { width: min(900px, 92vw); padding: 48px 0; text-align: center; }
-.luna-brand { font-size: clamp(44px, 9vw, 82px); font-weight: 800; letter-spacing: .04em; text-shadow: 0 4px 30px rgba(0,0,0,.7); }
-.luna-status { display: inline-flex; align-items: center; gap: 9px; margin: 14px 0 34px; opacity: .92; }
-.luna-status span { width: 10px; height: 10px; border-radius: 50%; background: #46d369; box-shadow: 0 0 14px rgba(70,211,105,.8); }
-.luna-panel { margin: auto; max-width: 650px; padding: 34px 28px; border: 1px solid rgba(255,255,255,.15); border-radius: 28px; background: rgba(5,7,11,.48); backdrop-filter: blur(12px); box-shadow: 0 20px 80px rgba(0,0,0,.35); }
-.luna-panel h1 { margin: 0; font-size: clamp(25px, 5vw, 42px); }
-.luna-panel p { margin: 12px 0 26px; opacity: .75; }
-.luna-panel button { border: 0; border-radius: 999px; padding: 15px 26px; color: white; background: #20a854; cursor: pointer; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+.luna-overlay { position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(0,0,0,.36), rgba(0,0,0,.78)); }
+.luna-content { width: min(900px, 92vw); padding: 42px 0 32px; text-align: center; }
+.luna-brand { font-size: clamp(42px, 9vw, 78px); font-weight: 800; letter-spacing: .04em; text-shadow: 0 4px 30px rgba(0,0,0,.7); }
+.luna-status { display: inline-flex; align-items: center; gap: 9px; margin: 10px 0 22px; opacity: .92; }
+.luna-status span { width: 9px; height: 9px; border-radius: 50%; background: #46d369; box-shadow: 0 0 14px rgba(70,211,105,.8); }
+.luna-chat { width: min(680px, 100%); height: min(680px, 70vh); min-height: 430px; margin: auto; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.16); border-radius: 28px; background: rgba(5,7,11,.48); backdrop-filter: blur(14px); box-shadow: 0 24px 90px rgba(0,0,0,.45); overflow: hidden; text-align: left; }
+.luna-chat-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.luna-chat-header strong { font-size: 18px; }
+.luna-chat-header span { margin-left: 14px; font-size: 12px; opacity: .7; }
+.luna-chat-header i { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #46d369; }
+.luna-chat-header small { opacity: .45; }
+.luna-messages { flex: 1; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+.luna-message { max-width: 82%; padding: 12px 15px; border-radius: 18px; line-height: 1.45; white-space: pre-wrap; }
+.luna-message.assistant { align-self: flex-start; background: rgba(255,255,255,.09); }
+.luna-message.user { align-self: flex-end; background: rgba(32,168,84,.82); }
+.luna-input { display: flex; gap: 10px; padding: 14px; border-top: 1px solid rgba(255,255,255,.1); }
+.luna-input input { flex: 1; min-width: 0; border: 1px solid rgba(255,255,255,.12); outline: none; border-radius: 999px; padding: 13px 17px; color: #fff; background: rgba(0,0,0,.3); }
+.luna-input input::placeholder { color: rgba(255,255,255,.52); }
+.luna-input button { width: 46px; height: 46px; border: 0; border-radius: 50%; color: white; background: #20a854; cursor: pointer; }
+.luna-input button:disabled { opacity: .35; cursor: default; }
+
+@media (max-width: 600px) {
+  .luna-content { width: 94vw; padding: 24px 0 18px; }
+  .luna-chat { height: 68vh; min-height: 420px; border-radius: 22px; }
+  .luna-message { max-width: 88%; }
+}
