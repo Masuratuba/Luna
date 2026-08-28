@@ -1,0 +1,1 @@
+LUNA 0.3 checkpoint status: persistent authenticated conversations, 100-message context, long-term memory loading, and explicit memory saving are implemented. Guest chat remains available. External integrations still require their own connection flows.
