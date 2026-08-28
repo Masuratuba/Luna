@@ -1,0 +1,1 @@
+Recovery point recorded on 2026-08-28 after persistent conversation and memory integration.
