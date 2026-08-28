@@ -14,14 +14,18 @@ export default function LoginPage() {
     setLoading(true);
     setStatus("");
 
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/` },
-    });
-
-    setStatus(error ? error.message : "Login-Link wurde an deine E-Mail gesendet.");
-    setLoading(false);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/` },
+      });
+      setStatus(error ? error.message : "Login-Link wurde an deine E-Mail gesendet.");
+    } catch {
+      setStatus("Supabase ist noch nicht vollständig konfiguriert.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
