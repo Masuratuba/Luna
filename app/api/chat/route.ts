@@ -13,6 +13,10 @@ export async function POST(request: Request) {
     if (!message) return NextResponse.json({ error: "message is required" }, { status: 400 });
 
     const supabase = await createSupabaseServerClient();
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "authentication required" }, { status: 401 });
 
