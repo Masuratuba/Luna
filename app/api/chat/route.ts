@@ -25,7 +25,7 @@ export async function POST(request: Request) {
               ((item as ChatMessage).role === "user" || (item as ChatMessage).role === "assistant") &&
               typeof (item as ChatMessage).content === "string",
           )
-          .slice(-20)
+          .slice(-100)
       : [];
 
     if (!message) {
