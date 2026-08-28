@@ -29,10 +29,9 @@ export default function LunaChatSecure() {
       });
       const data = await response.json();
       if (data.conversationId) setConversationId(data.conversationId);
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: data.reply ?? data.error ?? "Keine Antwort erhalten." },
-      ]);
+
+      const answer = data.reply ?? [data.error, data.detail].filter(Boolean).join(" — ") ?? "Keine Antwort erhalten.";
+      setMessages((current) => [...current, { role: "assistant", content: answer }]);
     } catch {
       setMessages((current) => [...current, { role: "assistant", content: "Verbindung zu LUNA fehlgeschlagen." }]);
     } finally {
