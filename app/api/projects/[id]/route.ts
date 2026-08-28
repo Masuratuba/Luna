@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/supabase/auth";
+import { requireUser } from "../../../../lib/supabase/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
