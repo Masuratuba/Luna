@@ -21,6 +21,7 @@ create table if not exists conversations (
 create table if not exists messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references conversations(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
   role text not null check (role in ('user', 'assistant', 'system')),
   content text not null,
   created_at timestamptz not null default now()
@@ -82,7 +83,7 @@ alter table tool_connections enable row level security;
 
 create policy "profiles_owner" on profiles for all using (auth.uid() = id) with check (auth.uid() = id);
 create policy "conversations_owner" on conversations for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "messages_owner" on messages for all using (exists (select 1 from conversations c where c.id = conversation_id and c.user_id = auth.uid())) with check (exists (select 1 from conversations c where c.id = conversation_id and c.user_id = auth.uid()));
+create policy "messages_owner" on messages for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "memories_owner" on memories for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "projects_owner" on projects for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "tasks_owner" on tasks for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
