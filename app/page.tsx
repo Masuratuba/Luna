@@ -5,8 +5,6 @@ import LunaChatSecure from "./components/LunaChatSecure";
 export default async function Home() {
   const supabase = await createSupabaseServerClient();
 
-  // Keep the production page renderable even if Vercel is missing Supabase env vars.
-  // This prevents a server-side exception from taking down the whole deployment.
   if (!supabase) {
     return (
       <main className="luna-shell">
@@ -23,13 +21,9 @@ export default async function Home() {
     );
   }
 
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getClaims();
 
-    if (!user) redirect("/login");
-  } catch {
+  if (error || !data?.claims) {
     redirect("/login");
   }
 
