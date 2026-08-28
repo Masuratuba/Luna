@@ -1,47 +1,6 @@
-import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "../lib/supabase/server";
 import LunaChatSecure from "./components/LunaChatSecure";
 
-export default async function Home() {
-  const supabase = await createSupabaseServerClient();
-
-  if (!supabase) {
-    const missing = [
-      !process.env.NEXT_PUBLIC_SUPABASE_URL ? "NEXT_PUBLIC_SUPABASE_URL" : null,
-      !(
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      )
-        ? "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY"
-        : null,
-    ].filter(Boolean);
-
-    return (
-      <main className="luna-shell">
-        <div className="luna-background" aria-hidden="true" />
-        <div className="luna-overlay" />
-        <section className="luna-content">
-          <header className="luna-brand">🌙 LUNA</header>
-          <div className="luna-panel">
-            <h1>Konfiguration fehlt</h1>
-            <p>Die Supabase-Umgebungsvariablen sind in diesem Deployment nicht verfügbar.</p>
-            {missing.length > 0 && (
-              <p style={{ marginTop: 12, fontSize: 13, opacity: 0.8 }}>
-                Fehlt: {missing.join(", ")}
-              </p>
-            )}
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || !data?.claims) {
-    redirect("/login");
-  }
-
+export default function Home() {
   return (
     <main className="luna-shell">
       <div className="luna-background" aria-hidden="true" />
