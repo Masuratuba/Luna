@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getOpenAI } from "@/lib/openai";
-import { LUNA_SYSTEM_PROMPT } from "@/lib/luna/prompt";
-import { runLunaCore } from "@/lib/luna/core";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getOpenAI } from "../../../lib/openai";
+import { LUNA_SYSTEM_PROMPT } from "../../../lib/luna/prompt";
+import { runLunaCore } from "../../../lib/luna/core";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
