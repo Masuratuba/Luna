@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -11,6 +12,42 @@ export default function LunaChatSecure() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>();
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function restoreConversation() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        setSignedIn(true);
+
+        const conversationsResponse = await fetch("/api/conversations");
+        if (!conversationsResponse.ok) return;
+        const conversationsData = await conversationsResponse.json();
+        const latest = conversationsData.conversations?.[0];
+        if (!latest || cancelled) return;
+
+        const messagesResponse = await fetch(`/api/conversations/${latest.id}`);
+        if (!messagesResponse.ok) return;
+        const messagesData = await messagesResponse.json();
+        const restored = Array.isArray(messagesData.messages)
+          ? messagesData.messages
+              .filter((item: Message) => (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
+              .slice(-100)
+          : [];
+        if (restored.length && !cancelled) {
+          setConversationId(latest.id);
+          setMessages(restored);
+        }
+      } catch {
+        // Guest mode continues to work exactly as before.
+      }
+    }
+    restoreConversation();
+    return () => { cancelled = true; };
+  }, []);
 
   async function sendMessage(event: React.FormEvent) {
     event.preventDefault();
@@ -44,8 +81,8 @@ export default function LunaChatSecure() {
   return (
     <div className="luna-chat">
       <div className="luna-chat-header">
-        <div><strong>🌙 LUNA</strong><span><i /> Bereit</span></div>
-        <small>LUNA 0.2</small>
+        <div><strong>🌙 LUNA</strong><span><i /> {signedIn ? "Gespeichert" : "Bereit"}</span></div>
+        <small>LUNA 0.3</small>
       </div>
       <div className="luna-messages" aria-live="polite">
         {messages.map((message, index) => (
