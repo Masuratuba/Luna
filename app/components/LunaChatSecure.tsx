@@ -17,7 +17,7 @@ export default function LunaChatSecure() {
     const message = input.trim();
     if (!message || loading) return;
 
-    const history = messages.slice(-20);
+    const history = messages.slice(-100);
     setInput("");
     setMessages((current) => [...current, { role: "user", content: message }]);
     setLoading(true);
