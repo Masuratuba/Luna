@@ -26,33 +26,35 @@ create table if not exists files (
 alter table automations enable row level security;
 alter table files enable row level security;
 
-create policy if not exists "automations_owner" on automations for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy if not exists "files_owner" on files for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'automations' AND policyname = 'automations_owner') THEN
+    CREATE POLICY "automations_owner" ON automations FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'files' AND policyname = 'files_owner') THEN
+    CREATE POLICY "files_owner" ON files FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
 create index if not exists automations_due_idx on automations (enabled, next_run_at);
 create index if not exists files_user_created_idx on files (user_id, created_at desc);
 create index if not exists memories_user_updated_idx on memories (user_id, updated_at desc);
 create index if not exists messages_conversation_created_idx on messages (conversation_id, created_at asc);
 
--- Private storage bucket for user files. Storage policies restrict access to the
--- first path segment, which is the authenticated user's UUID.
 insert into storage.buckets (id, name, public)
 values ('luna-files', 'luna-files', false)
 on conflict (id) do nothing;
 
-create policy if not exists "luna_files_select" on storage.objects
-for select to authenticated
-using (bucket_id = 'luna-files' and (storage.foldername(name))[1] = auth.uid()::text);
-
-create policy if not exists "luna_files_insert" on storage.objects
-for insert to authenticated
-with check (bucket_id = 'luna-files' and (storage.foldername(name))[1] = auth.uid()::text);
-
-create policy if not exists "luna_files_update" on storage.objects
-for update to authenticated
-using (bucket_id = 'luna-files' and (storage.foldername(name))[1] = auth.uid()::text)
-with check (bucket_id = 'luna-files' and (storage.foldername(name))[1] = auth.uid()::text);
-
-create policy if not exists "luna_files_delete" on storage.objects
-for delete to authenticated
-using (bucket_id = 'luna-files' and (storage.foldername(name))[1] = auth.uid()::text);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'luna_files_select') THEN
+    CREATE POLICY "luna_files_select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'luna-files' AND (storage.foldername(name))[1] = auth.uid()::text);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'luna_files_insert') THEN
+    CREATE POLICY "luna_files_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'luna-files' AND (storage.foldername(name))[1] = auth.uid()::text);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'luna_files_update') THEN
+    CREATE POLICY "luna_files_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'luna-files' AND (storage.foldername(name))[1] = auth.uid()::text) WITH CHECK (bucket_id = 'luna-files' AND (storage.foldername(name))[1] = auth.uid()::text);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'luna_files_delete') THEN
+    CREATE POLICY "luna_files_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'luna-files' AND (storage.foldername(name))[1] = auth.uid()::text);
+  END IF;
+END $$;
