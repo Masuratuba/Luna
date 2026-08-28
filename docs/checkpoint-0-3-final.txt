@@ -1,0 +1,1 @@
+LUNA 0.3 recovery checkpoint: persistent conversations and long-term memory integration are included. External integrations remain connection-dependent.
