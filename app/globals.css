@@ -6,7 +6,7 @@ button, input, textarea { font: inherit; }
 a { color: inherit; text-decoration: none; }
 
 .luna-shell { position: relative; min-height: 100vh; overflow: hidden; display: grid; place-items: center; isolation: isolate; }
-.luna-background { position: absolute; inset: 0; z-index: -3; background-image: url("https://raw.githubusercontent.com/Masuratuba/Luna/main/tuba.jpg"); background-size: cover; background-position: center; background-repeat: no-repeat; }
+.luna-background { position: absolute; inset: 0; z-index: -3; background: radial-gradient(circle at 50% 20%, rgba(90,100,120,.22), transparent 34%), radial-gradient(circle at 20% 80%, rgba(35,55,80,.24), transparent 40%), linear-gradient(180deg, #111722 0%, #070a10 55%, #030407 100%); background-size: cover; background-position: center; background-repeat: no-repeat; }
 .luna-overlay { position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, rgba(0,0,0,.36), rgba(0,0,0,.78)); }
 .luna-content { width: min(900px, 92vw); padding: 42px 0 32px; text-align: center; }
 .luna-topbar { position: relative; display: flex; align-items: center; justify-content: center; min-height: 86px; }
