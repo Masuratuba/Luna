@@ -21,6 +21,20 @@ create table if not exists public.messages (
   created_at timestamptz not null default now()
 );
 
+-- 001_luna_core.sql created messages without user_id. Add and backfill it
+-- before creating the per-user RLS policies below.
+alter table public.messages
+  add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+update public.messages m
+set user_id = c.user_id
+from public.conversations c
+where m.conversation_id = c.id
+  and m.user_id is null;
+
+alter table public.messages
+  alter column user_id set not null;
+
 create index if not exists conversations_user_updated_idx
   on public.conversations(user_id, updated_at desc);
 create index if not exists messages_conversation_created_idx
@@ -64,14 +78,10 @@ drop policy if exists "conversations_delete_own" on public.conversations;
 create policy "conversations_delete_own" on public.conversations
 for delete to authenticated using (user_id = auth.uid());
 
+drop policy if exists "messages_owner" on public.messages;
 drop policy if exists "messages_select_own" on public.messages;
-create policy "messages_select_own" on public.messages
-for select to authenticated using (user_id = auth.uid());
-
 drop policy if exists "messages_insert_own" on public.messages;
-create policy "messages_insert_own" on public.messages
-for insert to authenticated with check (user_id = auth.uid());
-
 drop policy if exists "messages_delete_own" on public.messages;
-create policy "messages_delete_own" on public.messages
-for delete to authenticated using (user_id = auth.uid());
+
+create policy "messages_owner" on public.messages
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
