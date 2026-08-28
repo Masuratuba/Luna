@@ -17,6 +17,7 @@ export default function LunaChatSecure() {
     const message = input.trim();
     if (!message || loading) return;
 
+    const history = messages.slice(-20);
     setInput("");
     setMessages((current) => [...current, { role: "user", content: message }]);
     setLoading(true);
@@ -25,12 +26,12 @@ export default function LunaChatSecure() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, conversationId }),
+        body: JSON.stringify({ message, conversationId, history }),
       });
       const data = await response.json();
       if (data.conversationId) setConversationId(data.conversationId);
 
-      const answer = data.reply ?? [data.error, data.detail].filter(Boolean).join(" — ") ?? "Keine Antwort erhalten.";
+      const answer = data.reply ?? [data.error, data.detail].filter(Boolean).join(" — ") || "Keine Antwort erhalten.";
       setMessages((current) => [...current, { role: "assistant", content: answer }]);
     } catch {
       setMessages((current) => [...current, { role: "assistant", content: "Verbindung zu LUNA fehlgeschlagen." }]);
@@ -43,7 +44,7 @@ export default function LunaChatSecure() {
     <div className="luna-chat">
       <div className="luna-chat-header">
         <div><strong>🌙 LUNA</strong><span><i /> Bereit</span></div>
-        <small>LUNA 0.1</small>
+        <small>LUNA 0.2</small>
       </div>
       <div className="luna-messages" aria-live="polite">
         {messages.map((message, index) => (
