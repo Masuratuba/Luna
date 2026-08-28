@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
     const core = runLunaCore({ userId: user.id, message, conversationId });
     const response = await getOpenAI().responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5.6",
+      model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
       instructions: LUNA_SYSTEM_PROMPT,
       input: (history ?? []).map((item) => ({ role: item.role, content: item.content })),
     });
