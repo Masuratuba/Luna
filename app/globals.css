@@ -26,8 +26,26 @@ button, input, textarea { font: inherit; }
 .luna-input button { width: 46px; height: 46px; border: 0; border-radius: 50%; color: white; background: #20a854; cursor: pointer; }
 .luna-input button:disabled { opacity: .35; cursor: default; }
 
+.luna-login-content { width: min(560px, 92vw); }
+.luna-login-card { margin: 8px auto 0; padding: 34px 30px 28px; border: 1px solid rgba(255,255,255,.16); border-radius: 28px; background: rgba(5,7,11,.58); backdrop-filter: blur(18px); box-shadow: 0 24px 90px rgba(0,0,0,.5); }
+.luna-login-icon { width: 58px; height: 58px; margin: 0 auto 16px; display: grid; place-items: center; border-radius: 18px; background: rgba(255,255,255,.08); font-size: 30px; }
+.luna-login-card h1 { margin: 0; font-size: clamp(28px, 6vw, 38px); }
+.luna-login-description { max-width: 430px; margin: 12px auto 26px; line-height: 1.55; color: rgba(255,255,255,.72); }
+.luna-login-form { display: grid; gap: 10px; text-align: left; }
+.luna-login-form label { font-size: 13px; color: rgba(255,255,255,.7); }
+.luna-login-form input { width: 100%; border: 1px solid rgba(255,255,255,.14); outline: none; border-radius: 14px; padding: 15px 16px; color: #fff; background: rgba(0,0,0,.34); }
+.luna-login-form input:focus { border-color: rgba(70,211,105,.65); box-shadow: 0 0 0 3px rgba(70,211,105,.12); }
+.luna-login-form input::placeholder { color: rgba(255,255,255,.4); }
+.luna-login-form button { margin-top: 4px; border: 0; border-radius: 14px; padding: 15px 18px; color: #fff; background: #20a854; font-weight: 700; cursor: pointer; }
+.luna-login-form button:disabled { opacity: .55; cursor: default; }
+.luna-login-status { margin: 18px 0 0; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.84); line-height: 1.4; }
+.luna-login-note { margin: 18px 0 0; font-size: 12px; line-height: 1.5; color: rgba(255,255,255,.48); }
+.luna-login-back { display: inline-block; margin-top: 22px; color: rgba(255,255,255,.72); text-decoration: none; font-size: 13px; }
+.luna-login-back:hover { color: #fff; }
+
 @media (max-width: 600px) {
   .luna-content { width: 94vw; padding: 24px 0 18px; }
   .luna-chat { height: 68vh; min-height: 420px; border-radius: 22px; }
   .luna-message { max-width: 88%; }
+  .luna-login-card { padding: 28px 20px 24px; border-radius: 22px; }
 }
