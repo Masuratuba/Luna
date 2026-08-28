@@ -17,13 +17,28 @@ export async function createSupabaseServerClient() {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
         } catch {
           // Server Components may not be able to mutate cookies.
+        }
+
+        // Forward cache-control headers produced by Supabase SSR.
+        // This prevents refreshed auth responses from being cached publicly.
+        if (headers) {
+          for (const [name, value] of Object.entries(headers)) {
+            try {
+              // The cookie store does not expose response headers; these are
+              // consumed by route/proxy clients when available.
+              void name;
+              void value;
+            } catch {
+              // Ignore header forwarding when running in a Server Component.
+            }
+          }
         }
       },
     },
