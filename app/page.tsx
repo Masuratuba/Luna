@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "../lib/supabase/server";
 import LunaChatSecure from "./components/LunaChatSecure";
 
 export default async function Home() {
