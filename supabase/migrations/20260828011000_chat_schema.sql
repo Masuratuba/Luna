@@ -1,4 +1,8 @@
--- LUNA 0.1 — Chat persistence
+-- LUNA 0.1 — Chat persistence hardening
+-- This migration is intentionally idempotent because 001_luna_core.sql already
+-- creates the core chat tables and their owner policies.
+
+create extension if not exists pgcrypto;
 
 create table if not exists public.conversations (
   id uuid primary key default gen_random_uuid(),
@@ -24,6 +28,19 @@ create index if not exists messages_conversation_created_idx
 create index if not exists messages_user_created_idx
   on public.messages(user_id, created_at);
 
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists conversations_updated_at on public.conversations;
 create trigger conversations_updated_at
 before update on public.conversations
 for each row execute function public.set_updated_at();
@@ -31,18 +48,30 @@ for each row execute function public.set_updated_at();
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
 
+drop policy if exists "conversations_select_own" on public.conversations;
 create policy "conversations_select_own" on public.conversations
 for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists "conversations_insert_own" on public.conversations;
 create policy "conversations_insert_own" on public.conversations
 for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists "conversations_update_own" on public.conversations;
 create policy "conversations_update_own" on public.conversations
 for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists "conversations_delete_own" on public.conversations;
 create policy "conversations_delete_own" on public.conversations
 for delete to authenticated using (user_id = auth.uid());
 
+drop policy if exists "messages_select_own" on public.messages;
 create policy "messages_select_own" on public.messages
 for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists "messages_insert_own" on public.messages;
 create policy "messages_insert_own" on public.messages
 for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists "messages_delete_own" on public.messages;
 create policy "messages_delete_own" on public.messages
 for delete to authenticated using (user_id = auth.uid());
