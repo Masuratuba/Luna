@@ -15,9 +15,7 @@ export type AgentDispatch = AgentTask & {
 /** Routes work to specialist agents. Execution remains behind the permission/approval layer. */
 export function dispatchAgent(task: AgentTask): AgentDispatch {
   const agent = getLunaAgent(task.agent);
-  if (!agent) {
-    return { ...task, approved: false, reason: "Unknown agent" };
-  }
+  if (!agent) return { ...task, approved: false, reason: "Unknown agent" };
 
   const approvalRequired = task.requiresApproval ?? agent.requiresApproval;
   return {
@@ -46,18 +44,16 @@ export function agentForDecision(decision: LunaDecision): LunaAgentId {
 
 export function routeByCapability(capability: string): LunaAgentId[] {
   const agentIds: LunaAgentId[] = [
-    "research",
-    "memory",
-    "planner",
-    "action",
-    "security",
-    "document",
-    "coding",
-    "analysis",
+    "research", "memory", "planner", "action", "security", "document", "coding", "analysis", "shop",
   ];
+  return agentIds.filter((id) => getLunaAgent(id)?.capabilities.includes(capability) ?? false);
+}
 
-  return agentIds.filter((id) => {
-    const agent = getLunaAgent(id);
-    return agent?.capabilities.includes(capability) ?? false;
-  });
+/** Direct commerce requests to the isolated Shop Agent. */
+export function isShopTask(message: string): boolean {
+  return /\b(shop|store|produkt|products?|preis|pricing|verkauf|verkaufen|e-?commerce|catalog|katalog)\b/i.test(message);
+}
+
+export function agentForTask(message: string): LunaAgentId {
+  return isShopTask(message) ? "shop" : "luna";
 }
