@@ -1,6 +1,14 @@
+import { redirect } from "next/navigation";
 import LunaChatSecure from "./components/LunaChatSecure";
+import { createSupabaseServerClient } from "../lib/supabase/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) redirect("/login?error=missing_supabase_config");
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   return (
     <main className="luna-shell">
       <div className="luna-background" aria-hidden="true" />
