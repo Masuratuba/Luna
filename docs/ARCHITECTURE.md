@@ -11,7 +11,7 @@ LUNA is a modular personal AI assistant. The foundation is provider-independent:
 
 LUNA Core makes the first decision and assigns work to a specialist. Agents are isolated by identity, data scope and capability allow-list; an agent does not receive arbitrary access to every LUNA tool.
 
-Current agents include LUNA Core, Research, Memory, Planner, Action, Security, Document, Coding, Analysis and the new **Shop Agent**.
+Current agents include LUNA Core, Research, Memory, Planner, Action, Security, Document, Coding, Analysis and the **Shop Agent**.
 
 ## Isolated Shop Agent
 
@@ -25,7 +25,10 @@ The Shop Agent is a dedicated commerce operator. It may run an end-to-end shop w
 4. Calculate prices according to the configured pricing policy.
 5. Generate product titles/descriptions and other catalog content.
 6. Update the isolated shop catalog.
-7. Publish changes only through the controlled execution boundary.
+7. Manage sales through approved store adapters.
+8. Publish changes only through the controlled execution boundary.
+9. Track revenue, costs, fees and net profit in an isolated ledger.
+10. Monitor a configurable profit target and risk limits.
 
 ### Shop Agent allow-list
 
@@ -39,6 +42,24 @@ The Shop Agent is a dedicated commerce operator. It may run an end-to-end shop w
 - `store.read` — read
 - `orders.read` — read
 - `store.publish` — execute + explicit approval
+
+### Shop Agent financial boundary
+
+Default performance target: **15 EUR net profit per 24-hour window**. The target is configuration, not hard-coded policy, so it can later be raised or lowered.
+
+Financial controls include:
+
+- maximum loss / loss-limit circuit breaker
+- maximum transaction amount
+- maximum daily spend
+- controlled wallet gateway
+- payout approval requirement
+- isolated financial ledger
+- net-profit calculation after costs and fees
+- target-window timeout
+- reversible deactivation with data preservation
+
+The financial gateway never exposes private keys or secret material to the agent. Real wallet/store adapters remain provider integrations behind the server-side action boundary.
 
 ### Shop Agent deny-list
 
@@ -85,12 +106,13 @@ The existing application-level sandbox is not treated as a security boundary by 
 - **Backup Metadata** — tracks backup scope and timestamps; storage implementation remains replaceable.
 - **Notification Engine** — native browser notifications.
 - **Reminder Client + Service Worker** — lightweight reminders without an additional notification vendor.
+- **Shop Finance / Wallet / Ledger / Risk** — isolated commerce financial controls.
 
 ## Data layer
 
 PostgreSQL/Supabase is the source of truth for persistent state. User-owned tables use Row Level Security. Versioned migrations live under `supabase/migrations`.
 
-The agent isolation migration persists agent identities, capability grants and agent runs. Shop data should use a dedicated shop/workspace scope so the Shop Agent cannot query unrelated user domains.
+The agent isolation migration persists agent identities, capability grants and agent runs. Shop financial configuration, ledger entries and shop runs have their own user-scoped tables and RLS.
 
 ## Security
 
@@ -99,13 +121,14 @@ The agent isolation migration persists agent identities, capability grants and a
 3. Keep provider/service secrets server-side.
 4. Validate input at API boundaries.
 5. Route every tool through registry → agent capability gateway → permissions → Guard.
-6. Require explicit approval for publishing, destructive actions, payments and other sensitive operations.
+6. Require explicit approval for publishing, destructive actions, payouts and other sensitive operations.
 7. Record important permission, agent and action decisions in the audit trail.
 8. Do not expose secret values through diagnostics, logs or notifications.
+9. Financial limits and circuit breakers take precedence over performance targets.
 
 ## Provider boundary
 
-OpenAI, web search, email, calendar, voice, storage, analytics and commerce platforms are adapters behind the tool/action boundary. The Shop Agent never receives provider credentials directly.
+OpenAI, web search, email, calendar, voice, storage, analytics and commerce/wallet platforms are adapters behind the tool/action boundary. The Shop Agent never receives provider credentials directly.
 
 ## Health semantics
 
@@ -113,4 +136,4 @@ OpenAI, web search, email, calendar, voice, storage, analytics and commerce plat
 
 ## Current phase boundary
 
-The architecture now defines the isolated Shop Agent and its access model. Provider adapters, credentials and real store activation remain separate implementation steps.
+The architecture defines the isolated Shop Agent, its financial controls and its access model. Provider adapters, credentials and real store/wallet activation remain separate implementation steps.
