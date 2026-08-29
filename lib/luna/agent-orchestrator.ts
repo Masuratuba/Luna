@@ -27,6 +27,19 @@ export function dispatchAgent(task: AgentTask): AgentDispatch {
 }
 
 export function routeByCapability(capability: string): LunaAgentId[] {
-  return ["research", "memory", "planner", "action", "security", "document", "coding", "analysis"]
-    .filter((id) => getLunaAgent(id)?.capabilities.includes(capability)) as LunaAgentId[];
+  const agentIds: LunaAgentId[] = [
+    "research",
+    "memory",
+    "planner",
+    "action",
+    "security",
+    "document",
+    "coding",
+    "analysis",
+  ];
+
+  return agentIds.filter((id) => {
+    const agent = getLunaAgent(id);
+    return agent?.capabilities.includes(capability) ?? false;
+  });
 }
