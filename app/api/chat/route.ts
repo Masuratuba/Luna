@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOpenAI } from "../../../lib/openai";
 import { LUNA_SYSTEM_PROMPT } from "../../../lib/luna/prompt";
-import { runLunaCore } from "../../../lib/luna/core";
+import { runLunaCore, createAction, createEvent, createAuditEntry } from "../../../lib/luna/core";
 import { evaluateGuard } from "../../../lib/luna/guard";
 import { requireUser } from "../../../lib/supabase/auth";
 
@@ -36,24 +36,35 @@ export async function POST(request: Request) {
 
     const core = runLunaCore({ userId: user.id, message, conversationId });
     const guard = evaluateGuard({ userId: user.id, message, decision: core.decision });
-    if (!guard.allowed) {
-      return NextResponse.json({ ok: false, blocked: true, risk: guard.risk, error: guard.reason }, { status: 403 });
-    }
+    const guardEvent = createEvent("guard.checked", user.id, { decision: core.decision, risk: guard.risk });
+    await supabase.from("luna_events").insert({ user_id: user.id, event_type: guardEvent.type, data: guardEvent.data });
+    await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: guardEvent.type, outcome: guard.allowed ? "allowed" : "blocked", risk: guard.risk, data: guardEvent.data });
+
+    if (!guard.allowed) return NextResponse.json({ ok: false, blocked: true, risk: guard.risk, error: guard.reason }, { status: 403 });
 
     const history = [...(recentMessages ?? [])].reverse();
     const memoryContext = (memories ?? []).map((memory) => `[${memory.type}] ${memory.content}`).join("\n");
     const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nGuard risk: ${guard.risk}\n\nRelevant durable memory:\n${memoryContext || "(none)"}`;
-
-    const response = await getOpenAI().responses.create({
-      model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
-      instructions,
-      input: history.map((item) => ({ role: item.role, content: item.content })),
-    });
+    const response = await getOpenAI().responses.create({ model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna", instructions, input: history.map((item) => ({ role: item.role, content: item.content })) });
     const reply = response.output_text || "Ich konnte gerade keine Antwort erzeugen.";
+
+    if (core.decision === "CREATE_TASK" || core.decision === "USE_TOOL" || core.decision === "SAVE_MEMORY") {
+      const actionType = core.decision === "CREATE_TASK" ? "task" : core.decision === "SAVE_MEMORY" ? "memory" : "tool";
+      const action = createAction(actionType, { message, conversationId });
+      await supabase.from("luna_actions").insert({ id: action.id, user_id: user.id, type: action.type, status: action.status, input: action.input });
+      const actionEvent = createEvent("action.created", user.id, { actionId: action.id, type: action.type });
+      await supabase.from("luna_events").insert({ user_id: user.id, event_type: actionEvent.type, data: actionEvent.data });
+      await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: actionEvent.type, outcome: "success", risk: guard.risk, data: actionEvent.data });
+    }
 
     const { error: assistantMessageError } = await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: reply });
     if (assistantMessageError) throw assistantMessageError;
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
+
+    const completionEvent = createEvent("action.completed", user.id, { conversationId, decision: core.decision });
+    const completionAudit = createAuditEntry(completionEvent, "success");
+    await supabase.from("luna_events").insert({ user_id: user.id, event_type: completionEvent.type, data: completionEvent.data });
+    await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: completionAudit.type, outcome: completionAudit.outcome, risk: guard.risk, data: completionAudit.data });
 
     return NextResponse.json({ ok: true, conversationId, decision: core.decision, guard: { risk: guard.risk }, reply });
   } catch (error: unknown) {
