@@ -43,7 +43,7 @@ export default function LunaChatSecure() {
     <div className="luna-chat">
       <div className="luna-chat-header">
         <div><strong>🌙 LUNA</strong><span><i /> Bereit</span></div>
-        <small>LUNA 0.1</small>
+        <small>LUNA 0.2</small>
       </div>
       <div className="luna-messages" aria-live="polite">
         {messages.map((message, index) => (
