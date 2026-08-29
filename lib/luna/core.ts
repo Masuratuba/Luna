@@ -1,4 +1,5 @@
 import { routeMessage } from "./router";
+import { agentForDecision, dispatchAgent } from "./agent-orchestrator";
 import type { LunaContext, LunaDecision } from "./types";
 import type { GuardRisk } from "./guard";
 
@@ -32,7 +33,9 @@ export function createAuditEntry(event: LunaEvent, outcome: LunaAuditEntry["outc
 
 export function runLunaCore(context: LunaContext) {
   const decision = routeMessage(context.message);
-  return { decision, context };
+  const agent = agentForDecision(decision);
+  const dispatch = dispatchAgent({ agent, task: context.message });
+  return { decision, agent, dispatch, context };
 }
 
 export function buildGuardEvent(userId: string, decision: LunaDecision, risk: GuardRisk, allowed: boolean) {
