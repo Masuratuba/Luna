@@ -3,6 +3,7 @@ import { getOpenAI } from "../../../lib/openai";
 import { LUNA_SYSTEM_PROMPT } from "../../../lib/luna/prompt";
 import { runLunaCore, createAction, createEvent, createAuditEntry } from "../../../lib/luna/core";
 import { evaluateGuard } from "../../../lib/luna/guard";
+import { extractExplicitMemory } from "../../../lib/luna/memory";
 import { requireUser } from "../../../lib/supabase/auth";
 
 export async function POST(request: Request) {
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
 
     const [{ data: recentMessages, error: messagesError }, { data: memories, error: memoryError }] = await Promise.all([
       supabase.from("messages").select("role, content").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: false }).limit(20),
-      supabase.from("memories").select("type, content, importance").eq("user_id", user.id).order("importance", { ascending: false }).order("updated_at", { ascending: false }).limit(12),
+      supabase.from("memories").select("type, content, importance").eq("user_id", user.id).order("importance", { ascending: false }).order("updated_at", { ascending: false }).limit(20),
     ]);
     if (messagesError) throw messagesError;
     if (memoryError) throw memoryError;
@@ -42,15 +43,32 @@ export async function POST(request: Request) {
 
     if (!guard.allowed) return NextResponse.json({ ok: false, blocked: true, risk: guard.risk, error: guard.reason }, { status: 403 });
 
+    const explicitMemory = extractExplicitMemory(message);
+    let memorySaved = false;
+    if (explicitMemory) {
+      const { data: existing } = await supabase.from("memories").select("id").eq("user_id", user.id).eq("content", explicitMemory).maybeSingle();
+      if (!existing) {
+        const { error } = await supabase.from("memories").insert({ user_id: user.id, type: "instruction", content: explicitMemory, importance: 1, metadata: { source: "explicit_user_instruction", saved_via: "chat" } });
+        if (error) throw error;
+      }
+      memorySaved = true;
+    }
+
     const history = [...(recentMessages ?? [])].reverse();
     const memoryContext = (memories ?? []).map((memory) => `[${memory.type}] ${memory.content}`).join("\n");
-    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nGuard risk: ${guard.risk}\n\nRelevant durable memory:\n${memoryContext || "(none)"}`;
-    const response = await getOpenAI().responses.create({ model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna", instructions, input: history.map((item) => ({ role: item.role, content: item.content })) });
+    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nGuard risk: ${guard.risk}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: If the user explicitly asks you to remember something, acknowledge that it was saved. Never claim to remember secrets or credentials.`;
+    const searchRequested = core.decision === "USE_TOOL";
+    const response = await getOpenAI().responses.create({
+      model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
+      instructions,
+      ...(searchRequested ? { tools: [{ type: "web_search", search_context_size: "high" as const }] } : {}),
+      input: history.map((item) => ({ role: item.role, content: item.content })),
+    });
     const reply = response.output_text || "Ich konnte gerade keine Antwort erzeugen.";
 
     if (core.decision === "CREATE_TASK" || core.decision === "USE_TOOL" || core.decision === "SAVE_MEMORY") {
       const actionType = core.decision === "CREATE_TASK" ? "task" : core.decision === "SAVE_MEMORY" ? "memory" : "tool";
-      const action = createAction(actionType, { message, conversationId });
+      const action = createAction(actionType, { message, conversationId, searchRequested, memorySaved });
       await supabase.from("luna_actions").insert({ id: action.id, user_id: user.id, type: action.type, status: action.status, input: action.input });
       const actionEvent = createEvent("action.created", user.id, { actionId: action.id, type: action.type });
       await supabase.from("luna_events").insert({ user_id: user.id, event_type: actionEvent.type, data: actionEvent.data });
@@ -61,12 +79,12 @@ export async function POST(request: Request) {
     if (assistantMessageError) throw assistantMessageError;
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
 
-    const completionEvent = createEvent("action.completed", user.id, { conversationId, decision: core.decision });
+    const completionEvent = createEvent("action.completed", user.id, { conversationId, decision: core.decision, searchRequested, memorySaved });
     const completionAudit = createAuditEntry(completionEvent, "success");
     await supabase.from("luna_events").insert({ user_id: user.id, event_type: completionEvent.type, data: completionEvent.data });
     await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: completionAudit.type, outcome: completionAudit.outcome, risk: guard.risk, data: completionAudit.data });
 
-    return NextResponse.json({ ok: true, conversationId, decision: core.decision, guard: { risk: guard.risk }, reply });
+    return NextResponse.json({ ok: true, conversationId, decision: core.decision, guard: { risk: guard.risk }, memorySaved, searchPerformed: searchRequested, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
