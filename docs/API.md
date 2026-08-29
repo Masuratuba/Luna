@@ -1,11 +1,16 @@
 # LUNA 0.1 API Contract
 
-All application API routes are server-side Next.js Route Handlers. Authentication is required unless explicitly marked public. The browser never receives provider secrets.
+All application API routes are server-side Next.js Route Handlers. Protected routes require a Supabase-authenticated user. Provider secrets never reach the browser.
 
 ## Public
 
 ### GET /api/health
-Returns `{ "ok": true, "service": "luna" }`.
+Returns service health and version.
+
+## Authentication
+
+### GET /auth/callback
+Exchanges the Supabase email-login code for a browser session and redirects to the requested safe local path.
 
 ## Chat
 
@@ -14,87 +19,82 @@ Request:
 ```json
 { "message": "string", "conversationId": "uuid?" }
 ```
+The route authenticates the user, creates or validates the owned conversation, stores the user message, loads recent conversation history and durable memory, calls the configured OpenAI model, and stores the assistant response.
+
 Response:
 ```json
-{ "ok": true, "conversationId": "uuid", "decision": "chat", "reply": "string" }
+{ "ok": true, "conversationId": "uuid", "decision": "ANSWER", "reply": "string" }
 ```
 
 ### GET /api/conversations
-Returns the authenticated user's conversations, newest first.
+Lists the authenticated user's conversations, newest first.
+
+### POST /api/conversations
+Creates an owned conversation.
 
 ### GET /api/conversations/:id
 Returns one owned conversation and its messages.
 
 ### DELETE /api/conversations/:id
-Deletes one owned conversation and its messages.
+Deletes one owned conversation and its messages through the database cascade.
 
 ## Memory
 
-### GET /api/memory
-Lists the authenticated user's memories.
+### GET /api/memory?q=term
+Lists up to 50 owned memories; `q` optionally filters memory content.
 
 ### POST /api/memory
-Creates or updates a memory by `memory_key`.
-Request: `{ "memory_key": "string", "memory_value": {}, "category": "general", "importance": 3 }`.
+Creates a memory.
+Request:
+```json
+{ "type": "personal|preference|project|decision|fact|instruction", "content": "string", "importance": 0.0, "metadata": {} }
+```
+Importance is a number from 0 to 1.
+
+### PATCH /api/memory/:id
+Updates an owned memory.
 
 ### DELETE /api/memory/:id
-Deletes one owned memory.
+Deletes an owned memory.
 
-## Profile
+## Projects
 
-### GET /api/profile
-Returns the authenticated user's LUNA profile.
+### GET /api/projects
+Lists owned projects.
 
-### PUT /api/profile
-Creates or updates the authenticated user's profile.
+### POST /api/projects
+Creates an owned project.
 
-## Notes
+### GET /api/projects/:id
+Returns one owned project.
 
-### GET /api/notes
-Lists owned notes.
+### PATCH /api/projects/:id
+Updates an owned project.
 
-### POST /api/notes
-Creates a note.
+### DELETE /api/projects/:id
+Deletes an owned project.
 
-### PUT /api/notes/:id
-Updates an owned note.
+## Tasks
 
-### DELETE /api/notes/:id
-Deletes an owned note.
+### GET /api/tasks
+Lists owned tasks.
 
-## Reminders
+### POST /api/tasks
+Creates an owned task.
 
-### GET /api/reminders
-Lists owned reminders.
+### PATCH /api/tasks/:id
+Updates an owned task.
 
-### POST /api/reminders
-Creates a reminder.
-
-### PUT /api/reminders/:id
-Updates an owned reminder.
-
-### DELETE /api/reminders/:id
-Deletes an owned reminder.
-
-## Plans / Projects
-
-### GET /api/plans
-Lists owned plans.
-
-### POST /api/plans
-Creates a plan.
-
-### PUT /api/plans/:id
-Updates an owned plan.
-
-### DELETE /api/plans/:id
-Deletes an owned plan.
+### DELETE /api/tasks/:id
+Deletes an owned task.
 
 ## Design rules
 
-1. Every user-owned query is scoped by `auth.uid()`.
-2. RLS remains enabled on all user-owned tables.
-3. Service/provider API keys stay server-side in environment variables.
-4. API handlers validate input before database/provider calls.
-5. Tool execution is routed through the Luna Core; the UI does not call tools directly.
-6. New modules should add their own tables/routes without changing existing core contracts unless a migration is explicitly required.
+1. Authenticate before accessing user data.
+2. Every user-owned query is scoped to the authenticated user's ID.
+3. RLS remains enabled on all user-owned tables.
+4. Service/provider API keys stay server-side in environment variables.
+5. Validate request payloads at the API boundary.
+6. Conversation and memory context are assembled server-side.
+7. Tool execution remains behind the Luna Core boundary.
+8. New modules should add their own tables/routes without destabilizing existing core contracts.
