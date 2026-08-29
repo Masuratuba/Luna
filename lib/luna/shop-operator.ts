@@ -13,6 +13,7 @@ export function evaluateShopOperator(snapshot: ProfitSnapshot, config: ShopFinan
   const target = evaluateShopTarget(snapshot, config);
   const risk = evaluateShopRisk(snapshot.netProfitEur, config.maxLossEur);
   if (risk.stop) return triggerShopCircuitBreaker("loss_limit");
-  if (target.reached) return { state: "target_reached" as const, stop: false, reason: "24h profit target reached" };
+  if (target.reached) return { state: "target_reached" as const, stop: false, reason: "profit target reached" };
+  if (target.timedOut) return triggerShopCircuitBreaker("target_timeout");
   return { state: "running" as const, stop: false, reason: "target still in progress" };
 }
