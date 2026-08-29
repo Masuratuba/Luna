@@ -37,8 +37,18 @@ export function calculateNetProfit(revenueEur: number, costsEur: number, feesEur
   return Number((revenueEur - costsEur - feesEur).toFixed(2));
 }
 
-export function evaluateShopTarget(snapshot: ProfitSnapshot, config: ShopFinancialConfig) {
+export function evaluateShopTarget(snapshot: ProfitSnapshot, config: ShopFinancialConfig, now = Date.now()) {
+  const started = Date.parse(snapshot.windowStartedAt);
+  if (!Number.isFinite(started)) throw new Error("Invalid target window start time");
+  const elapsedHours = Math.max(0, (now - started) / 3_600_000);
   const reached = snapshot.netProfitEur >= config.targetProfitEur;
   const lossLimitHit = snapshot.netProfitEur <= -Math.abs(config.maxLossEur);
-  return { reached, lossLimitHit, status: lossLimitHit ? "stop" : reached ? "target_reached" : "running" as const };
+  const timedOut = elapsedHours >= config.targetWindowHours && !reached;
+  return {
+    reached,
+    lossLimitHit,
+    timedOut,
+    elapsedHours,
+    status: lossLimitHit || timedOut ? "stop" : reached ? "target_reached" : "running" as const,
+  };
 }
