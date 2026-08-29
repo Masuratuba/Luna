@@ -1,20 +1,11 @@
 import type { LunaDecision } from "./types";
+import { getToolPermission } from "./permissions";
+import type { PermissionLevel } from "./permissions";
 
 export type GuardRisk = "SAFE" | "PROTECTED" | "CRITICAL";
-export type PermissionLevel = "read" | "write" | "destructive";
 export type ToolPermission = { tool: string; level: PermissionLevel; requiresConfirmation: boolean };
 
-const DEFAULT_PERMISSIONS: ToolPermission[] = [
-  { tool: "memory.read", level: "read", requiresConfirmation: false },
-  { tool: "memory.write", level: "write", requiresConfirmation: false },
-  { tool: "task.create", level: "write", requiresConfirmation: false },
-  { tool: "external.send", level: "destructive", requiresConfirmation: true },
-  { tool: "data.delete", level: "destructive", requiresConfirmation: true },
-];
-
-export function getToolPermission(tool: string): ToolPermission {
-  return DEFAULT_PERMISSIONS.find((permission) => permission.tool === tool) ?? { tool, level: "destructive", requiresConfirmation: true };
-}
+export { getToolPermission };
 
 export type GuardInput = { userId: string; message: string; decision: LunaDecision; toolName?: string };
 export type GuardResult = { allowed: boolean; risk: GuardRisk; reason: string };
