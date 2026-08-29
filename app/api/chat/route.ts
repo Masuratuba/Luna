@@ -37,7 +37,12 @@ export async function POST(request: Request) {
 
     const core = runLunaCore({ userId: user.id, message, conversationId });
     const guard = evaluateGuard({ userId: user.id, message, decision: core.decision });
-    const guardEvent = createEvent("guard.checked", user.id, { decision: core.decision, risk: guard.risk });
+    const guardEvent = createEvent("guard.checked", user.id, {
+      decision: core.decision,
+      agent: core.agent,
+      agentApproved: core.dispatch.approved,
+      risk: guard.risk,
+    });
     await supabase.from("luna_events").insert({ user_id: user.id, event_type: guardEvent.type, data: guardEvent.data });
     await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: guardEvent.type, outcome: guard.allowed ? "allowed" : "blocked", risk: guard.risk, data: guardEvent.data });
 
@@ -56,7 +61,7 @@ export async function POST(request: Request) {
 
     const history = [...(recentMessages ?? [])].reverse();
     const memoryContext = (memories ?? []).map((memory) => `[${memory.type}] ${memory.content}`).join("\n");
-    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nGuard risk: ${guard.risk}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: If the user explicitly asks you to remember something, acknowledge that it was saved. Never claim to remember secrets or credentials.`;
+    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: If the user explicitly asks you to remember something, acknowledge that it was saved. Never claim to remember secrets or credentials.`;
     const searchRequested = core.decision === "USE_TOOL";
     const response = await getOpenAI().responses.create({
       model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
@@ -68,9 +73,9 @@ export async function POST(request: Request) {
 
     if (core.decision === "CREATE_TASK" || core.decision === "USE_TOOL" || core.decision === "SAVE_MEMORY") {
       const actionType = core.decision === "CREATE_TASK" ? "task" : core.decision === "SAVE_MEMORY" ? "memory" : "tool";
-      const action = createAction(actionType, { message, conversationId, searchRequested, memorySaved });
+      const action = createAction(actionType, { message, conversationId, agent: core.agent, searchRequested, memorySaved });
       await supabase.from("luna_actions").insert({ id: action.id, user_id: user.id, type: action.type, status: action.status, input: action.input });
-      const actionEvent = createEvent("action.created", user.id, { actionId: action.id, type: action.type });
+      const actionEvent = createEvent("action.created", user.id, { actionId: action.id, type: action.type, agent: core.agent });
       await supabase.from("luna_events").insert({ user_id: user.id, event_type: actionEvent.type, data: actionEvent.data });
       await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: actionEvent.type, outcome: "success", risk: guard.risk, data: actionEvent.data });
     }
@@ -79,12 +84,12 @@ export async function POST(request: Request) {
     if (assistantMessageError) throw assistantMessageError;
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
 
-    const completionEvent = createEvent("action.completed", user.id, { conversationId, decision: core.decision, searchRequested, memorySaved });
+    const completionEvent = createEvent("action.completed", user.id, { conversationId, decision: core.decision, agent: core.agent, searchRequested, memorySaved });
     const completionAudit = createAuditEntry(completionEvent, "success");
     await supabase.from("luna_events").insert({ user_id: user.id, event_type: completionEvent.type, data: completionEvent.data });
     await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: completionAudit.type, outcome: completionAudit.outcome, risk: guard.risk, data: completionAudit.data });
 
-    return NextResponse.json({ ok: true, conversationId, decision: core.decision, guard: { risk: guard.risk }, memorySaved, searchPerformed: searchRequested, reply });
+    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, memorySaved, searchPerformed: searchRequested, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
