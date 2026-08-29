@@ -7,7 +7,8 @@ export type LunaAgentId =
   | "security"
   | "document"
   | "coding"
-  | "analysis";
+  | "analysis"
+  | "shop";
 
 export type LunaAgent = {
   id: LunaAgentId;
@@ -23,10 +24,11 @@ export const lunaAgents: readonly LunaAgent[] = [
   { id: "memory", name: "Memory Agent", description: "Manages durable memory and personal context.", capabilities: ["memory", "recall", "context"], requiresApproval: false },
   { id: "planner", name: "Planner Agent", description: "Turns goals into ordered plans and workflows.", capabilities: ["planning", "scheduling", "workflows"], requiresApproval: false },
   { id: "action", name: "Action Agent", description: "Executes approved tool actions.", capabilities: ["tools", "execution", "queue"], requiresApproval: true },
-  { id: "security", name: "Security Agent", description: "Checks permissions, risk, and policy before actions.", capabilities: ["security", "permissions", "risk"], requiresApproval: false },
+  { id: "security", name: "Security Agent", description: "Checks permissions, risk, and security before actions.", capabilities: ["security", "permissions", "risk"], requiresApproval: false },
   { id: "document", name: "Document Agent", description: "Processes and organizes documents and files.", capabilities: ["documents", "files", "extraction"], requiresApproval: false },
   { id: "coding", name: "Coding Agent", description: "Assists with software engineering tasks.", capabilities: ["code", "debugging", "architecture"], requiresApproval: true },
   { id: "analysis", name: "Analysis Agent", description: "Analyzes structured information and agent results.", capabilities: ["analysis", "evaluation", "reporting"], requiresApproval: false },
+  { id: "shop", name: "Shop Agent", description: "Isolated commerce operator with allow-listed research, analytics, catalog, pricing and publishing capabilities.", capabilities: ["shop", "product-research", "market-analysis", "catalog", "pricing", "content", "commerce"], requiresApproval: false },
 ];
 
 export function getLunaAgents(): LunaAgent[] {
