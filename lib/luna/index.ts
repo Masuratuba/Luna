@@ -21,3 +21,5 @@ export * from "./sandbox";
 export * from "./self-test";
 export * from "./backup";
 export * from "./secrets";
+export * from "./agents";
+export * from "./agent-orchestrator";
