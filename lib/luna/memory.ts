@@ -11,19 +11,30 @@ export type Memory = {
 
 export type MemoryCandidate = { type: MemoryType; content: string; importance: number };
 
+const MEMORY_TRIGGER = /\b(merke(?:\s+dir)?|merk(?:e)?\s+dir|speicher(?:e)?|vergiss\s+nicht)\b/i;
+const SECRET_PATTERN = /\b(api[_ -]?key|passwort|password|secret|token|private[_ -]?key)\b/i;
+
 export function buildMemoryQuery(userId: string, query: string) {
   return { userId, query: query.trim() };
 }
 
 export function shouldRemember(message: string): boolean {
-  return /\b(merke|merk dir|speicher|vergiss nicht|erinnere dich)\b/i.test(message);
+  return MEMORY_TRIGGER.test(message);
+}
+
+export function extractExplicitMemory(message: string): string | null {
+  if (!shouldRemember(message) || SECRET_PATTERN.test(message)) return null;
+  const content = message
+    .replace(/^\s*(bitte\s+)?(merke(?:\s+dir)?|merk\s+dir|speicher(?:e)?|vergiss\s+nicht)\s*[:,-]?\s*/i, "")
+    .trim();
+  return content ? content.slice(0, 10000) : null;
 }
 
 export function normalizeMemory(candidate: MemoryCandidate): MemoryCandidate {
   return {
     type: candidate.type,
-    content: candidate.content.trim().slice(0, 2000),
-    importance: Math.min(5, Math.max(1, Math.round(candidate.importance))),
+    content: candidate.content.trim().slice(0, 10000),
+    importance: Math.min(1, Math.max(0, candidate.importance)),
   };
 }
 
