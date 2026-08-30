@@ -29,3 +29,53 @@ test("financial adapter cannot move money before explicit integration", async ()
   const provider = new DisabledFinancialProvider();
   await assert.rejects(() => provider.transfer(), /FINANCIAL_TRANSFER_DISABLED/);
 });
+
+test("analytics adapter sends JSON and auth to configured provider", async () => {
+  const originalFetch = globalThis.fetch;
+  let captured: { url: string; body: string; authorization?: string } | undefined;
+  globalThis.fetch = async (input, init) => {
+    captured = {
+      url: String(input),
+      body: String(init?.body),
+      authorization: new Headers(init?.headers).get("authorization") ?? undefined,
+    };
+    return new Response(JSON.stringify({ value: 42, unit: "events", source: "test-provider" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  try {
+    const result = await new HttpAnalyticsProvider("https://analytics.test", "secret").measure({ metric: "events" });
+    assert.deepEqual(result, { value: 42, unit: "events", source: "test-provider" });
+    assert.equal(captured?.url, "https://analytics.test");
+    assert.equal(captured?.authorization, "Bearer secret");
+    assert.equal(captured?.body, JSON.stringify({ metric: "events" }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("commerce adapter rejects non-JSON provider responses", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("not-json", { status: 200, headers: { "content-type": "text/plain" } });
+  try {
+    await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").listProducts(), /PROVIDER_INVALID_CONTENT_TYPE/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("provider HTTP adapter fails closed on timeout", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_input, init) => {
+    await new Promise<void>((resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("timed out", "TimeoutError")), { once: true });
+    });
+    throw new DOMException("timed out", "TimeoutError");
+  };
+  try {
+    await assert.rejects(() => new HttpAnalyticsProvider("https://slow.test").measure({ metric: "test" }), /PROVIDER_REQUEST_TIMEOUT/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
