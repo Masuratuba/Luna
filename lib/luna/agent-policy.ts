@@ -29,7 +29,7 @@ const RULES: readonly AgentRule[] = [
   { agent: "document", allowedCapabilities: ["documents", "files", "extraction"], deniedCapabilities: ALL_DENIED, maxMode: "write", selfModify: false },
   { agent: "coding", allowedCapabilities: ["code", "debugging", "architecture"], deniedCapabilities: ALL_DENIED, maxMode: "write", selfModify: false },
   { agent: "analysis", allowedCapabilities: ["analysis", "evaluation", "reporting", "analytics"], deniedCapabilities: ALL_DENIED, maxMode: "read", selfModify: false },
-  { agent: "shop", allowedCapabilities: ["shop", "product-research", "market-analysis", "deep-search", "analytics", "market-data", "catalog.read", "catalog.write", "content.write", "pricing.write", "store.read", "store.publish", "orders.read"], deniedCapabilities: [...ALL_DENIED, "payments.execute", "payouts.execute", "wallet.read", "wallet.transfer", "wallet.withdraw", "wallet.sign", "user.memory.read", "user.memory.write"], maxMode: "execute", selfModify: false },
+  { agent: "shop", allowedCapabilities: ["shop", "product-research", "market-analysis", "deep-search", "analytics", "market-data", "catalog.read", "catalog.write", "content.write", "pricing.write", "store.read", "store.publish", "orders.read"], deniedCapabilities: [...ALL_DENIED, "payments.execute", "payouts.execute", "wallet.read", "wallet.transfer", "wallet.withdraw", "wallet.sign", "user.memory.read", "user.memory.write"], maxMode: "write", selfModify: false },
 ];
 
 export function getAgentPolicy(agent: LunaAgentId): AgentRule | undefined {
