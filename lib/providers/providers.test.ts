@@ -13,8 +13,8 @@ test("provider registry exposes all five boundaries", () => {
   assert.equal(typeof registry.financial, "function");
 });
 
-test("search adapter fails closed when endpoint is absent", async () => {
-  await assert.rejects(() => new HttpSearchProvider(undefined).search({ query: "test" }), /SEARCH_PROVIDER_URL/);
+test("search adapter fails closed when query is absent", async () => {
+  await assert.rejects(() => new HttpSearchProvider().search({ query: "" }), /SEARCH_QUERY_REQUIRED/);
 });
 
 test("analytics adapter fails closed when endpoint is absent", async () => {
