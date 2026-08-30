@@ -12,7 +12,7 @@ type SearchOutput = Readonly<{
   output?: unknown;
 }>;
 
-function extractSearchResults(response: SearchOutput, limit: number): readonly SearchResult[] {
+export function extractSearchResults(response: SearchOutput, limit: number): readonly SearchResult[] {
   const text = typeof response.output_text === "string" ? response.output_text.trim() : "";
   const results: SearchResult[] = [];
   const seen = new Set<string>();
