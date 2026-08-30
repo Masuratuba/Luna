@@ -6,21 +6,34 @@ import { createProviderRegistry } from "../../../lib/providers/registry";
 export async function POST(request: Request) {
   try {
     const { supabase, user } = await requireUser();
-    const body = await request.json();
-    const query = typeof body.query === "string" ? body.query.trim() : "";
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
+    }
+
+    const query = body && typeof body === "object" && "query" in body && typeof body.query === "string" ? body.query.trim() : "";
     if (!query) return NextResponse.json({ error: "query is required" }, { status: 400 });
+
+    const rawLimit = body && typeof body === "object" && "limit" in body ? body.limit : undefined;
+    const limit = typeof rawLimit === "number" && Number.isFinite(rawLimit) ? Math.floor(rawLimit) : undefined;
+    if (limit !== undefined && (limit < 1 || limit > 10)) {
+      return NextResponse.json({ error: "limit must be between 1 and 10" }, { status: 400 });
+    }
 
     const access = getAgentAccess("research", "search", "read");
     if (!access.allowed) return NextResponse.json({ error: "search capability denied" }, { status: 403 });
 
     const provider = createProviderRegistry().search();
-    const results = await provider.search({ query });
+    const results = await provider.search({ query, ...(limit === undefined ? {} : { limit }) });
     const answer = results[0]?.snippet || "Keine Suchantwort erzeugt.";
 
     await supabase.from("luna_events").insert({
       user_id: user.id,
       event_type: "search.completed",
-      data: { query, provider: provider.name },
+      data: { query, provider: provider.name, result_count: results.length },
     });
 
     return NextResponse.json({ ok: true, query, answer, results, provider: provider.name });
@@ -30,8 +43,6 @@ export async function POST(request: Request) {
       if (error.message === "SUPABASE_NOT_CONFIGURED") return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
     }
     console.error("Luna search error", error);
-    const err = error as { message?: string; status?: number };
-    const status = Number(err?.status);
-    return NextResponse.json({ error: "search failed", detail: err?.message || "Unknown error" }, { status: status >= 400 && status < 600 ? status : 500 });
+    return NextResponse.json({ error: "search failed" }, { status: 500 });
   }
 }
