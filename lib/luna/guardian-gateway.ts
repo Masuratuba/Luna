@@ -21,7 +21,7 @@ export type GuardianGatewayResult = {
 };
 
 /**
- * The single server-side boundary for agent actions.
+ * Single server-side boundary for agent actions.
  * Agent -> capability gate -> Guardian -> executor. Agents never call providers directly.
  */
 export async function executeThroughGuardian(
@@ -29,35 +29,29 @@ export async function executeThroughGuardian(
 ): Promise<GuardianGatewayResult> {
   const mode = request.mode ?? "read";
   const access = getAgentAccess(request.agent, request.capability, mode);
-
-  if (!access.allowed || access.requiresApproval) {
-    const guard = checkGuard({
-      action: request.action,
-      authenticated: request.context.authenticated,
-      role: request.context.role,
-      approved: request.context.approved,
-      confirmationToken: request.context.confirmationToken,
-    } satisfies GuardRequest);
-
-    return {
-      ok: false,
-      access,
-      guard,
-      error: access.requiresApproval ? "agent capability requires explicit approval" : access.reason,
-    };
-  }
-
-  const guard = checkGuard({
+  const guardRequest: GuardRequest = {
     action: request.action,
     authenticated: request.context.authenticated,
     role: request.context.role,
+    adminAuthenticated: request.context.adminAuthenticated,
     approved: request.context.approved,
     confirmationToken: request.context.confirmationToken,
-    adminAuthenticated: request.context.role === "admin" ? false : undefined,
-  });
+  };
+  const guard = checkGuard(guardRequest);
+
+  if (!access.allowed) {
+    return { ok: false, access, guard, error: access.reason };
+  }
+
+  if (access.requiresApproval && request.context.approved !== true) {
+    return { ok: false, access, guard, error: "agent capability requires explicit approval" };
+  }
 
   if (!guard.allowed) return { ok: false, access, guard, error: guard.reason };
 
-  const execution = await executeActionSafely(request.action, request.context);
+  const execution = await executeActionSafely(request.action, {
+    ...request.context,
+    gatewayAuthorized: true,
+  });
   return { ok: execution.ok, access, guard, execution, error: execution.error };
 }
