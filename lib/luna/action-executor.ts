@@ -5,8 +5,11 @@ import { checkGuard, type GuardRequest, type GuardRole } from "./guard";
 export type ActionExecutionContext = {
   authenticated: boolean;
   role?: GuardRole;
+  adminAuthenticated?: boolean;
   approved?: boolean;
   confirmationToken?: string;
+  /** Only the Guardian Gateway may set this to true. */
+  gatewayAuthorized?: boolean;
 };
 
 export type ActionExecutionResult = {
@@ -19,16 +22,25 @@ export type ActionExecutionResult = {
 
 /**
  * Executes an action only after the independent LUNA Guard authorizes it.
- * The executor never treats an unexecuted action as successful.
+ * Direct callers are rejected unless the central Guardian Gateway authorized the request.
  */
 export async function executeActionSafely(
   action: LunaAction,
   context: ActionExecutionContext,
 ): Promise<ActionExecutionResult> {
+  if (context.gatewayAuthorized !== true) {
+    return {
+      action: { ...action, status: "failed" },
+      ok: false,
+      error: "guardian gateway authorization required",
+    };
+  }
+
   const guardRequest: GuardRequest = {
     action,
     authenticated: context.authenticated,
     role: context.role,
+    adminAuthenticated: context.adminAuthenticated,
     approved: context.approved,
     confirmationToken: context.confirmationToken,
   };
