@@ -44,7 +44,7 @@ export function evaluateFinancialAction(args: {
   if (amount > config.maxTransactionEur) return { allowed: false, reason: "transaction limit exceeded" };
   if (state.loss24hEur >= config.maxLoss24hEur) return { allowed: false, reason: "24h loss limit reached" };
   if (["withdraw", "transfer", "sign", "execute", "authorize"].includes(args.operation)) {
-    const action: LunaAction = { id: crypto.randomUUID(), type: "tool", status: "pending", createdAt: new Date().toISOString(), input: { tool: `wallet.${args.operation}` } };
+    const action: LunaAction = { id: crypto.randomUUID(), type: "tool", status: "pending", input: { tool: `wallet.${args.operation}` } };
     const guard = checkGuard({ action, authenticated: Boolean(args.authenticated), role: args.role, approved: args.approved, confirmationToken: args.confirmationToken, adminAuthenticated: args.role === "admin" && Boolean(args.authenticated) });
     if (!guard.allowed) return { allowed: false, reason: guard.reason };
   }
