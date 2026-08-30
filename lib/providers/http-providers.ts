@@ -1,4 +1,5 @@
 import type { AnalyticsProvider, AnalyticsRequest, AnalyticsResult, CommerceProduct, CommerceProvider, SearchProvider, SearchRequest, SearchResult } from "./contracts";
+import { getOpenAI } from "../openai";
 
 async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
   const response = await fetch(url, {
@@ -10,12 +11,19 @@ async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise
   return response.json() as Promise<T>;
 }
 
+/** Production search adapter. Search is routed through the server-side OpenAI web-search capability. */
 export class HttpSearchProvider implements SearchProvider {
-  readonly name = "http-search";
-  constructor(private readonly endpoint = process.env.SEARCH_PROVIDER_URL, private readonly apiKey = process.env.SEARCH_PROVIDER_API_KEY) {}
+  readonly name = "openai-web-search";
   async search(request: SearchRequest): Promise<readonly SearchResult[]> {
-    if (!this.endpoint) throw new Error("SEARCH_PROVIDER_URL is not configured");
-    return postJson<SearchResult[]>(this.endpoint, request, this.apiKey);
+    const query = request.query.trim();
+    if (!query) throw new Error("SEARCH_QUERY_REQUIRED");
+    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
+    const response = await getOpenAI().responses.create({
+      model,
+      input: query,
+      tools: [{ type: "web_search", search_context_size: "high" }],
+    });
+    return [{ title: "Luna Search", url: "", snippet: response.output_text || "" }];
   }
 }
 
