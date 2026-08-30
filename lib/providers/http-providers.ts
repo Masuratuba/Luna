@@ -1,13 +1,31 @@
 import type { AnalyticsProvider, AnalyticsRequest, AnalyticsResult, CommerceProduct, CommerceProvider, SearchProvider, SearchRequest, SearchResult } from "./contracts";
 import { getOpenAI } from "../openai";
 
+const PROVIDER_TIMEOUT_MS = 15_000;
+
 async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+    });
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      throw new Error("PROVIDER_REQUEST_TIMEOUT");
+    }
+    throw error;
+  }
+
   if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
+  }
+
   return response.json() as Promise<T>;
 }
 
