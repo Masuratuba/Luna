@@ -1,5 +1,6 @@
 import { checkGuard, type GuardRole } from "./guard";
 import type { LunaAction } from "./core";
+import type { TrustedAdminContext } from "./trusted-auth";
 
 export type FinancialConfig = {
   targetProfit24hEur: number;
@@ -35,6 +36,7 @@ export function evaluateFinancialAction(args: {
   authenticated?: boolean;
   approved?: boolean;
   confirmationToken?: string;
+  trustedAdmin?: TrustedAdminContext;
 }): FinancialDecision {
   const config = args.config ?? DEFAULT_FINANCIAL_CONFIG;
   const state = args.state ?? { profit24hEur: 0, loss24hEur: 0, spent24hEur: 0, circuitBroken: false };
@@ -45,7 +47,7 @@ export function evaluateFinancialAction(args: {
   if (state.loss24hEur >= config.maxLoss24hEur) return { allowed: false, reason: "24h loss limit reached" };
   if (["withdraw", "transfer", "sign", "execute", "authorize"].includes(args.operation)) {
     const action: LunaAction = { id: crypto.randomUUID(), type: "tool", status: "pending", input: { tool: `wallet.${args.operation}` } };
-    const guard = checkGuard({ action, authenticated: Boolean(args.authenticated), role: args.role, approved: args.approved, confirmationToken: args.confirmationToken, adminAuthenticated: args.role === "admin" && Boolean(args.authenticated) });
+    const guard = checkGuard({ action, authenticated: Boolean(args.authenticated), role: args.role, approved: args.approved, confirmationToken: args.confirmationToken, trustedAdmin: args.trustedAdmin });
     if (!guard.allowed) return { allowed: false, reason: guard.reason };
   }
   return { allowed: true, reason: "financial boundary approved; provider execution remains external" };
