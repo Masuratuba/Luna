@@ -1,4 +1,5 @@
 import { getLunaAgent, type LunaAgentId } from "./agents";
+import { getAgentAccess, type AgentAccessMode } from "./agent-isolation";
 import type { LunaDecision } from "./types";
 
 export type AgentTask = { agent: LunaAgentId; task: string; requiresApproval?: boolean };
@@ -9,6 +10,30 @@ export function dispatchAgent(task: AgentTask): AgentDispatch {
   if (!agent) return { ...task, approved: false, reason: "Unknown agent" };
   const approvalRequired = task.requiresApproval ?? agent.requiresApproval;
   return { ...task, approved: !approvalRequired, reason: approvalRequired ? "Approval required before execution" : `Dispatched to ${agent.name}` };
+}
+
+/**
+ * Capability-gated dispatch. Agent selection alone never grants tool access.
+ * The capability allow-list is checked before a task can be approved for execution.
+ */
+export function dispatchWithCapability(
+  task: AgentTask,
+  capability: string,
+  mode: AgentAccessMode = "read",
+): AgentDispatch {
+  const base = dispatchAgent(task);
+  if (!base.approved) return base;
+
+  const access = getAgentAccess(task.agent, capability, mode);
+  if (!access.allowed) {
+    return { ...base, approved: false, reason: access.reason };
+  }
+
+  if (access.requiresApproval) {
+    return { ...base, approved: false, reason: "Capability is allowed but requires explicit approval" };
+  }
+
+  return { ...base, approved: true, reason: `Capability ${capability} granted (${mode})` };
 }
 
 export function agentForDecision(decision: LunaDecision): LunaAgentId {
