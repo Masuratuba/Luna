@@ -3,7 +3,7 @@ import test from "node:test";
 import { dispatchWithCapability, selectAgent } from "./agent-orchestrator";
 
 test("shop tasks route to the isolated Shop Agent", () => {
-  assert.equal(selectAgent("analysiere Produkte und Preise", "USE_TOOL"), "shop");
+  assert.equal(selectAgent("shop: analysiere Produkte und Preise", "USE_TOOL"), "shop");
 });
 
 test("Shop Agent receives only allow-listed read capabilities", () => {
