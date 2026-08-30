@@ -14,8 +14,10 @@ test("agents cannot modify Guardian or policy", () => {
   }
 });
 
-test("research is read-only", () => {
+test("research can use search but remains read-only", () => {
   assert.equal(evaluateAgentPolicy("research", "deep-search", "read").allowed, true);
+  assert.equal(evaluateAgentPolicy("research", "search", "read").allowed, true);
+  assert.equal(evaluateAgentPolicy("research", "search", "write").allowed, false);
   assert.equal(evaluateAgentPolicy("research", "catalog.write", "write").allowed, false);
 });
 
