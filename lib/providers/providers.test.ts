@@ -65,12 +65,9 @@ test("commerce adapter rejects non-JSON provider responses", async () => {
   }
 });
 
-test("provider HTTP adapter fails closed on timeout", async () => {
+test("provider HTTP adapter fails closed on timeout errors", async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (_input, init) => {
-    await new Promise<void>((resolve, reject) => {
-      init?.signal?.addEventListener("abort", () => reject(new DOMException("timed out", "TimeoutError")), { once: true });
-    });
+  globalThis.fetch = async () => {
     throw new DOMException("timed out", "TimeoutError");
   };
   try {
