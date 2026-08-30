@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DisabledFinancialProvider } from "./financial-provider";
-import { HttpAnalyticsProvider, HttpCommerceProvider, HttpSearchProvider } from "./http-providers";
+import { extractSearchResults, HttpAnalyticsProvider, HttpCommerceProvider, HttpSearchProvider } from "./http-providers";
 import { createProviderRegistry } from "./registry";
 
 test("provider registry exposes all five boundaries", () => {
@@ -15,6 +15,34 @@ test("provider registry exposes all five boundaries", () => {
 
 test("search adapter fails closed when query is absent", async () => {
   await assert.rejects(() => new HttpSearchProvider().search({ query: "" }), /SEARCH_QUERY_REQUIRED/);
+});
+
+test("search citation extractor returns unique sources and respects limit", () => {
+  const result = extractSearchResults({
+    output_text: "Answer from the web.",
+    output: [{
+      type: "message",
+      content: [{
+        type: "output_text",
+        annotations: [
+          { type: "url_citation", url_citation: { title: "Source A", url: "https://a.example" } },
+          { type: "url_citation", url_citation: { title: "Source A duplicate", url: "https://a.example" } },
+          { type: "url_citation", url_citation: { title: "Source B", url: "https://b.example" } },
+        ],
+      }],
+    }],
+  }, 2);
+
+  assert.deepEqual(result, [
+    { title: "Source A", url: "https://a.example", snippet: "Answer from the web." },
+    { title: "Source B", url: "https://b.example", snippet: "Answer from the web." },
+  ]);
+});
+
+test("search citation extractor falls back to answer text without citations", () => {
+  assert.deepEqual(extractSearchResults({ output_text: "No citations returned.", output: [] }, 5), [
+    { title: "Luna Search", url: "", snippet: "No citations returned." },
+  ]);
 });
 
 test("analytics adapter fails closed when endpoint is absent", async () => {
