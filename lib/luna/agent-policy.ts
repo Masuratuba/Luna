@@ -45,6 +45,13 @@ export function evaluateAgentPolicy(agent: LunaAgentId, capability: string, mode
   }
   if (rule.deniedCapabilities.includes(capability)) return { allowed: false, requiresApproval: false, reason: "capability explicitly denied by agent policy" };
   if (!rule.allowedCapabilities.includes(capability)) return { allowed: false, requiresApproval: false, reason: "capability is not allowed for this agent" };
+
+  // Publishing is the single Shop exception: the operation may cross the
+  // execute boundary only as an explicit approval-gated capability.
+  if (agent === "shop" && capability === "store.publish" && mode === "execute") {
+    return { allowed: true, requiresApproval: true, reason: "shop publishing requires explicit approval" };
+  }
+
   const modes: AgentAccessMode[] = ["read", "write", "execute"];
   if (modes.indexOf(mode) > modes.indexOf(rule.maxMode)) return { allowed: false, requiresApproval: false, reason: "requested mode exceeds agent policy" };
   return { allowed: true, requiresApproval: capability === "store.publish", reason: "agent policy allows capability" };
