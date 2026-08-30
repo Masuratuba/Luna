@@ -2,6 +2,45 @@ import type { AnalyticsProvider, AnalyticsRequest, AnalyticsResult, CommerceProd
 import { getOpenAI } from "../openai";
 
 const PROVIDER_TIMEOUT_MS = 15_000;
+const DEFAULT_SEARCH_LIMIT = 5;
+const MAX_SEARCH_LIMIT = 10;
+
+type WebCitation = Readonly<{ url?: unknown; title?: unknown }>;
+
+type SearchOutput = Readonly<{
+  output_text?: unknown;
+  output?: unknown;
+}>;
+
+function extractSearchResults(response: SearchOutput, limit: number): readonly SearchResult[] {
+  const text = typeof response.output_text === "string" ? response.output_text.trim() : "";
+  const results: SearchResult[] = [];
+  const seen = new Set<string>();
+  const output = Array.isArray(response.output) ? response.output : [];
+
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = "content" in item && Array.isArray(item.content) ? item.content : [];
+    for (const part of content) {
+      if (!part || typeof part !== "object" || !("annotations" in part) || !Array.isArray(part.annotations)) continue;
+      for (const annotation of part.annotations) {
+        if (!annotation || typeof annotation !== "object") continue;
+        if (!("type" in annotation) || annotation.type !== "url_citation") continue;
+        const citation = "url_citation" in annotation ? annotation.url_citation : undefined;
+        if (!citation || typeof citation !== "object") continue;
+        const typedCitation = citation as WebCitation;
+        const url = typeof typedCitation.url === "string" ? typedCitation.url.trim() : "";
+        if (!url || seen.has(url)) continue;
+        const title = typeof typedCitation.title === "string" && typedCitation.title.trim() ? typedCitation.title.trim() : url;
+        seen.add(url);
+        results.push({ title, url, snippet: text });
+        if (results.length >= limit) return results;
+      }
+    }
+  }
+
+  return results.length > 0 ? results : text ? [{ title: "Luna Search", url: "", snippet: text }] : [];
+}
 
 async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
   let response: Response;
@@ -35,13 +74,16 @@ export class HttpSearchProvider implements SearchProvider {
   async search(request: SearchRequest): Promise<readonly SearchResult[]> {
     const query = request.query.trim();
     if (!query) throw new Error("SEARCH_QUERY_REQUIRED");
+    const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
+    const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
     const response = await getOpenAI().responses.create({
       model,
       input: query,
       tools: [{ type: "web_search", search_context_size: "high" }],
+      store: false,
     });
-    return [{ title: "Luna Search", url: "", snippet: response.output_text || "" }];
+    return extractSearchResults(response, limit);
   }
 }
 
