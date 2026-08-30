@@ -8,7 +8,7 @@ import { requireUser } from "../../../lib/supabase/auth";
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user, role, adminAuthenticated } = await requireUser(request);
+    const { supabase, user, role, trustedAdmin } = await requireUser(request);
     const body = await request.json();
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const requestedConversationId = typeof body.conversationId === "string" && body.conversationId.trim() ? body.conversationId.trim() : null;
@@ -36,8 +36,8 @@ export async function POST(request: Request) {
     if (memoryError) throw memoryError;
 
     const core = runLunaCore({ userId: user.id, message, conversationId });
-    const guard = evaluateGuard({ userId: user.id, message, decision: core.decision, role, adminAuthenticated });
-    const guardEvent = createEvent("guard.checked", user.id, { decision: core.decision, agent: core.agent, agentApproved: core.dispatch.approved, role, adminAuthenticated, risk: guard.risk });
+    const guard = evaluateGuard({ userId: user.id, message, decision: core.decision, role, trustedAdmin });
+    const guardEvent = createEvent("guard.checked", user.id, { decision: core.decision, agent: core.agent, agentApproved: core.dispatch.approved, role, trustedAdmin: Boolean(trustedAdmin), risk: guard.risk });
     await supabase.from("luna_events").insert({ user_id: user.id, event_type: guardEvent.type, data: guardEvent.data });
     await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: guardEvent.type, outcome: guard.allowed ? "allowed" : "blocked", risk: guard.risk, data: guardEvent.data });
     if (!guard.allowed) return NextResponse.json({ ok: false, blocked: true, risk: guard.risk, error: guard.reason }, { status: 403 });
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
       if (error.message === "SUPABASE_NOT_CONFIGURED") return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
-      if (error.message === "OWNER_AUTH_NOT_CONFIGURED") return NextResponse.json({ error: "owner authentication is not configured" }, { status: 503 });
+      if (error.message === "OWNER_AUTH_INVALID") return NextResponse.json({ error: "owner authentication is invalid" }, { status: 503 });
     }
     console.error("Luna chat error", error);
     const err = error as { message?: string; status?: number; code?: string };
