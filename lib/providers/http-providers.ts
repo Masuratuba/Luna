@@ -6,11 +6,7 @@ const DEFAULT_SEARCH_LIMIT = 5;
 const MAX_SEARCH_LIMIT = 10;
 
 type WebCitation = Readonly<{ url?: unknown; title?: unknown }>;
-
-type SearchOutput = Readonly<{
-  output_text?: unknown;
-  output?: unknown;
-}>;
+type SearchOutput = Readonly<{ output_text?: unknown; output?: unknown }>;
 
 export function extractSearchResults(response: SearchOutput, limit: number): readonly SearchResult[] {
   const text = typeof response.output_text === "string" ? response.output_text.trim() : "";
@@ -39,7 +35,7 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
-  return results.length > 0 ? results : text ? [{ title: "Luna Search", url: "", snippet: text }] : [];
+  return results;
 }
 
 async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
@@ -52,23 +48,15 @@ async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise
       signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
     });
   } catch (error: unknown) {
-    if (error instanceof DOMException && error.name === "TimeoutError") {
-      throw new Error("PROVIDER_REQUEST_TIMEOUT");
-    }
+    if (error instanceof DOMException && error.name === "TimeoutError") throw new Error("PROVIDER_REQUEST_TIMEOUT");
     throw error;
   }
-
   if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
-
   const contentType = response.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().includes("application/json")) {
-    throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
-  }
-
+  if (!contentType.toLowerCase().includes("application/json")) throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
   return response.json() as Promise<T>;
 }
 
-/** Production search adapter. Search is routed through the server-side OpenAI web-search capability. */
 export class HttpSearchProvider implements SearchProvider {
   readonly name = "openai-web-search";
   async search(request: SearchRequest): Promise<readonly SearchResult[]> {
@@ -77,12 +65,7 @@ export class HttpSearchProvider implements SearchProvider {
     const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
-    const response = await getOpenAI().responses.create({
-      model,
-      input: query,
-      tools: [{ type: "web_search", search_context_size: "high" }],
-      store: false,
-    });
+    const response = await getOpenAI().responses.create({ model, input: query, tools: [{ type: "web_search", search_context_size: "high" }], store: false });
     return extractSearchResults(response, limit);
   }
 }
