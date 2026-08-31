@@ -23,8 +23,12 @@ test("search citation extractor returns unique sources and respects limit", () =
   assert.deepEqual(result, [{ title: "Source A", url: "https://a.example", snippet: "Answer from the web." }, { title: "Source B", url: "https://b.example", snippet: "Answer from the web." }]);
 });
 
-test("search citation extractor falls back to answer text without citations", () => {
-  assert.deepEqual(extractSearchResults({ output_text: "No citations returned.", output: [] }, 5), [{ title: "Luna Search", url: "", snippet: "No citations returned." }]);
+test("search citation extractor returns no fabricated source without citations", () => {
+  assert.deepEqual(extractSearchResults({ output_text: "No citations returned.", output: [] }, 5), []);
+});
+
+test("search citation extractor rejects invalid citation URLs", () => {
+  assert.deepEqual(extractSearchResults({ output_text: "Answer.", output: [{ type: "message", content: [{ type: "output_text", annotations: [{ type: "url_citation", url_citation: { title: "Bad", url: "javascript:alert(1)" } }] }] }] }, 5), []);
 });
 
 test("analytics request parser accepts a metric and bounded dimensions", () => {
