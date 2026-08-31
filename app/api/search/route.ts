@@ -30,11 +30,12 @@ export async function POST(request: Request) {
     const results = await provider.search({ query, ...(limit === undefined ? {} : { limit }) });
     const answer = results[0]?.snippet || "Keine Suchantwort erzeugt.";
 
-    await supabase.from("luna_events").insert({
+    const { error: eventError } = await supabase.from("luna_events").insert({
       user_id: user.id,
       event_type: "search.completed",
       data: { query, provider: provider.name, result_count: results.length },
     });
+    if (eventError) console.error("Luna search event error", eventError);
 
     return NextResponse.json({ ok: true, query, answer, results, provider: provider.name });
   } catch (error: unknown) {
