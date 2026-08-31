@@ -12,6 +12,15 @@ type SearchOutput = Readonly<{
   output?: unknown;
 }>;
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export function extractSearchResults(response: SearchOutput, limit: number): readonly SearchResult[] {
   const text = typeof response.output_text === "string" ? response.output_text.trim() : "";
   const results: SearchResult[] = [];
@@ -30,7 +39,7 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
         if (!citation || typeof citation !== "object") continue;
         const typedCitation = citation as WebCitation;
         const url = typeof typedCitation.url === "string" ? typedCitation.url.trim() : "";
-        if (!url || seen.has(url)) continue;
+        if (!url || !isHttpUrl(url) || seen.has(url)) continue;
         const title = typeof typedCitation.title === "string" && typedCitation.title.trim() ? typedCitation.title.trim() : url;
         seen.add(url);
         results.push({ title, url, snippet: text });
@@ -39,7 +48,7 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
-  return results.length > 0 ? results : text ? [{ title: "Luna Search", url: "", snippet: text }] : [];
+  return results.length > 0 ? results : [];
 }
 
 async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
@@ -52,19 +61,13 @@ async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise
       signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
     });
   } catch (error: unknown) {
-    if (error instanceof DOMException && error.name === "TimeoutError") {
-      throw new Error("PROVIDER_REQUEST_TIMEOUT");
-    }
+    if (error instanceof DOMException && error.name === "TimeoutError") throw new Error("PROVIDER_REQUEST_TIMEOUT");
     throw error;
   }
 
   if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
-
   const contentType = response.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().includes("application/json")) {
-    throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
-  }
-
+  if (!contentType.toLowerCase().includes("application/json")) throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
   return response.json() as Promise<T>;
 }
 
