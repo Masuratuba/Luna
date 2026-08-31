@@ -14,10 +14,10 @@ test("OpenAI request validation trims input and accepts a bounded model", () => 
 });
 
 test("OpenAI model resolution prefers the explicit request, then configured model", () => {
-  assert.equal(resolveLunaModel({ model: "  gpt-5.6-luna  " }, "configured-model"), "gpt-5.6-luna");
-  assert.equal(resolveLunaModel({}, "configured-model"), "configured-model");
+  assert.equal(resolveLunaModel({ input: "hello", model: "  gpt-5.6-luna  " }, "configured-model"), "gpt-5.6-luna");
+  assert.equal(resolveLunaModel({ input: "hello" }, "configured-model"), "configured-model");
 });
 
 test("OpenAI model resolution falls back to the default model", () => {
-  assert.equal(resolveLunaModel({}), "gpt-5.6-luna");
+  assert.equal(resolveLunaModel({ input: "hello" }), "gpt-5.6-luna");
 });
