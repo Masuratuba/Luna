@@ -51,8 +51,25 @@ test("analytics adapter fails closed when endpoint is absent", async () => {
   await assert.rejects(() => new HttpAnalyticsProvider(undefined).measure({ metric: "test" }), /ANALYTICS_PROVIDER_URL/);
 });
 
+test("analytics adapter rejects non-http provider endpoints", async () => {
+  await assert.rejects(() => new HttpAnalyticsProvider("javascript:alert(1)").measure({ metric: "test" }), /PROVIDER_INVALID_URL/);
+});
+
 test("commerce adapter fails closed when endpoint is absent", async () => {
   await assert.rejects(() => new HttpCommerceProvider(undefined).listProducts(), /COMMERCE_PROVIDER_URL/);
+});
+
+test("commerce adapter normalizes provider endpoint before appending routes", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedUrl = "";
+  globalThis.fetch = async (input) => {
+    capturedUrl = String(input);
+    return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    await new HttpCommerceProvider("https://commerce.test/").listProducts("phone");
+    assert.equal(capturedUrl, "https://commerce.test/products/search");
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test("financial adapter cannot move money before explicit integration", async () => {
@@ -70,7 +87,7 @@ test("analytics adapter sends JSON and auth to configured provider", async () =>
   try {
     const result = await new HttpAnalyticsProvider("https://analytics.test", "secret").measure({ metric: "events" });
     assert.deepEqual(result, { value: 42, unit: "events", source: "test-provider" });
-    assert.equal(captured?.url, "https://analytics.test");
+    assert.equal(captured?.url, "https://analytics.test/");
     assert.equal(captured?.authorization, "Bearer secret");
     assert.equal(captured?.body, JSON.stringify({ metric: "events" }));
   } finally { globalThis.fetch = originalFetch; }
