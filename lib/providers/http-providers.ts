@@ -21,6 +21,17 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+function normalizeProviderEndpoint(value: string): string {
+  const trimmed = value.trim();
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("PROVIDER_INVALID_URL");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    throw new Error("PROVIDER_INVALID_URL");
+  }
+}
+
 export function extractSearchResults(response: SearchOutput, limit: number): readonly SearchResult[] {
   const text = typeof response.output_text === "string" ? response.output_text.trim() : "";
   const results: SearchResult[] = [];
@@ -95,7 +106,7 @@ export class HttpAnalyticsProvider implements AnalyticsProvider {
   constructor(private readonly endpoint = process.env.ANALYTICS_PROVIDER_URL, private readonly apiKey = process.env.ANALYTICS_PROVIDER_API_KEY) {}
   async measure(request: AnalyticsRequest): Promise<AnalyticsResult> {
     if (!this.endpoint) throw new Error("ANALYTICS_PROVIDER_URL is not configured");
-    return postJson<AnalyticsResult>(this.endpoint, request, this.apiKey);
+    return postJson<AnalyticsResult>(normalizeProviderEndpoint(this.endpoint), request, this.apiKey);
   }
 }
 
@@ -104,10 +115,10 @@ export class HttpCommerceProvider implements CommerceProvider {
   constructor(private readonly endpoint = process.env.COMMERCE_PROVIDER_URL, private readonly apiKey = process.env.COMMERCE_PROVIDER_API_KEY) {}
   async listProducts(query?: string): Promise<readonly CommerceProduct[]> {
     if (!this.endpoint) throw new Error("COMMERCE_PROVIDER_URL is not configured");
-    return postJson<CommerceProduct[]>(`${this.endpoint}/products/search`, { query }, this.apiKey);
+    return postJson<CommerceProduct[]>(`${normalizeProviderEndpoint(this.endpoint)}/products/search`, { query }, this.apiKey);
   }
   async publishProduct(product: CommerceProduct): Promise<{ id: string; published: boolean }> {
     if (!this.endpoint) throw new Error("COMMERCE_PROVIDER_URL is not configured");
-    return postJson<{ id: string; published: boolean }>(`${this.endpoint}/products/publish`, product, this.apiKey);
+    return postJson<{ id: string; published: boolean }>(`${normalizeProviderEndpoint(this.endpoint)}/products/publish`, product, this.apiKey);
   }
 }
