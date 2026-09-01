@@ -87,7 +87,7 @@ test("analytics adapter sends JSON and auth to configured provider", async () =>
   try {
     const result = await new HttpAnalyticsProvider("https://analytics.test", "secret").measure({ metric: "events" });
     assert.deepEqual(result, { value: 42, unit: "events", source: "test-provider" });
-    assert.equal(captured?.url, "https://analytics.test/");
+    assert.equal(captured?.url, "https://analytics.test");
     assert.equal(captured?.authorization, "Bearer secret");
     assert.equal(captured?.body, JSON.stringify({ metric: "events" }));
   } finally { globalThis.fetch = originalFetch; }
