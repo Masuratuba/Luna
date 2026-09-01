@@ -51,8 +51,25 @@ test("analytics adapter fails closed when endpoint is absent", async () => {
   await assert.rejects(() => new HttpAnalyticsProvider(undefined).measure({ metric: "test" }), /ANALYTICS_PROVIDER_URL/);
 });
 
+test("analytics adapter rejects non-http provider endpoints", async () => {
+  await assert.rejects(() => new HttpAnalyticsProvider("javascript:alert(1)").measure({ metric: "test" }), /PROVIDER_INVALID_URL/);
+});
+
 test("commerce adapter fails closed when endpoint is absent", async () => {
   await assert.rejects(() => new HttpCommerceProvider(undefined).listProducts(), /COMMERCE_PROVIDER_URL/);
+});
+
+test("commerce adapter normalizes provider endpoint before appending routes", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedUrl = "";
+  globalThis.fetch = async (input) => {
+    capturedUrl = String(input);
+    return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    await new HttpCommerceProvider("https://commerce.test/").listProducts("phone");
+    assert.equal(capturedUrl, "https://commerce.test/products/search");
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test("financial adapter cannot move money before explicit integration", async () => {
