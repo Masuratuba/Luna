@@ -10,30 +10,31 @@ import { getOpenAI } from "../../../lib/openai";
 
 const MAX_CHAT_MESSAGE_CHARS = 20_000;
 
-async function persistAction(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
-  userId: string,
-  action: ReturnType<typeof createAction>,
-  result: { ok: boolean; output?: Record<string, unknown>; error?: string },
-  risk: string,
-) {
-  await supabase.from("luna_actions").update({ status: result.ok ? "completed" : "failed", output: result.output ?? (result.error ? { error: result.error } : null), updated_at: new Date().toISOString() }).eq("id", action.id).eq("user_id", userId);
-  const event = createEvent(result.ok ? "action.completed" : "action.created", userId, { actionId: action.id, type: action.type, status: result.ok ? "completed" : "failed", error: result.error ?? null });
+type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
+type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: string };
+
+async function persistAction(supabase: SupabaseClient, userId: string, action: ReturnType<typeof createAction>, result: ActionResult, risk: string) {
+  const status = result.ok ? "completed" : "failed";
+  const { error: updateError } = await supabase.from("luna_actions").update({ status, output: result.output ?? (result.error ? { error: result.error } : null), updated_at: new Date().toISOString() }).eq("id", action.id).eq("user_id", userId);
+  if (updateError) throw updateError;
+  const event = createEvent("action.completed", userId, { actionId: action.id, type: action.type, status, error: result.error ?? null });
   const audit = createAuditEntry(event, result.ok ? "success" : "failure");
-  await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
-  await supabase.from("luna_audit_log").insert({ user_id: userId, event_type: audit.type, outcome: audit.outcome, risk, data: audit.data });
+  const { error: eventError } = await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
+  if (eventError) throw eventError;
+  const { error: auditError } = await supabase.from("luna_audit_log").insert({ user_id: userId, event_type: audit.type, outcome: audit.outcome, risk, data: audit.data });
+  if (auditError) throw auditError;
 }
 
-async function createPendingAction(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
-  userId: string,
-  action: ReturnType<typeof createAction>,
-  agent: string,
-) {
-  await supabase.from("luna_actions").insert({ id: action.id, user_id: userId, type: action.type, status: action.status, input: action.input });
+async function createPendingAction(supabase: SupabaseClient, userId: string, action: ReturnType<typeof createAction>, agent: string) {
+  const { error } = await supabase.from("luna_actions").insert({ id: action.id, user_id: userId, type: action.type, status: action.status, input: action.input });
+  if (error) throw error;
   const event = createEvent("action.created", userId, { actionId: action.id, type: action.type, agent });
   await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
   await supabase.from("luna_audit_log").insert({ user_id: userId, event_type: event.type, outcome: "success", data: event.data });
+}
+
+function taskTitle(message: string) {
+  return message.replace(/^\s*(bitte\s+)?(erstelle|erstell|mach|lege|setze)\s+(mir\s+)?(eine?\s+)?(aufgabe|task)\s*[:,-]?\s*/i, "").trim().slice(0, 200) || message.slice(0, 200);
 }
 
 export async function POST(request: Request) {
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
     const history = [...(recentMessages ?? [])].reverse();
     const memoryContext = (memories ?? []).map((memory) => `[${memory.type}] ${memory.content}`).join("\n");
     const actionDecision = core.decision === "CREATE_TASK" || core.decision === "SAVE_MEMORY" || core.decision === "USE_TOOL";
-    let actionResult: { ok: boolean; output?: Record<string, unknown>; error?: string } | null = null;
+    let actionResult: ActionResult | null = null;
     let actionId: string | null = null;
     let searchPerformed = false;
     let searchContext = "";
@@ -87,59 +88,58 @@ export async function POST(request: Request) {
       const action = createAction(actionType, { message, conversationId, agent: core.agent });
       actionId = action.id;
       await createPendingAction(supabase, user.id, action, core.agent);
-
       const explicitMemory = extractExplicitMemory(message);
+      const capability = core.decision === "CREATE_TASK" ? "task.create" : core.decision === "SAVE_MEMORY" ? "memory.write" : "search";
+
       const result = await executeThroughGuardian({
         agent: core.agent,
-        capability: core.decision === "CREATE_TASK" ? "task.create" : core.decision === "SAVE_MEMORY" ? "memory.write" : "search",
+        capability,
         mode: core.decision === "USE_TOOL" ? "read" : "write",
         action,
-        context: { authenticated: true, role, trustedAdmin },
+        context: {
+          authenticated: true,
+          role,
+          trustedAdmin,
+          handler: async () => {
+            if (core.decision === "CREATE_TASK") {
+              const { data, error } = await supabase.from("tasks").insert({ user_id: user.id, title: taskTitle(message), status: "todo", priority: 3, description: message }).select("id, title, status").single();
+              if (error) throw error;
+              return { task: data };
+            }
+            if (core.decision === "SAVE_MEMORY") {
+              if (!explicitMemory) throw new Error("no safe memory content was found");
+              const { data: existing, error: existingError } = await supabase.from("memories").select("id").eq("user_id", user.id).eq("content", explicitMemory).maybeSingle();
+              if (existingError) throw existingError;
+              if (existing) return { memoryId: existing.id, alreadyPresent: true };
+              const { data, error } = await supabase.from("memories").insert({ user_id: user.id, type: "instruction", content: explicitMemory, importance: 1, metadata: { source: "explicit_user_instruction", saved_via: "chat" } }).select("id, type, content").single();
+              if (error) throw error;
+              return { memory: data };
+            }
+            const results = await createProviderRegistry().search().search({ query: message, limit: 5 });
+            return { results };
+          },
+        },
       });
 
-      if (result.execution) actionResult = result.execution;
-      else actionResult = { ok: false, error: result.error ?? result.guard.reason };
-
-      if (actionResult.ok && core.decision === "CREATE_TASK") {
-        const title = message.replace(/^\s*(bitte\s+)?(erstelle|erstell|mach|lege|setze)\s+(mir\s+)?(eine?\s+)?(aufgabe|task)\s*[:,-]?\s*/i, "").trim().slice(0, 200) || message.slice(0, 200);
-        const { data, error } = await supabase.from("tasks").insert({ user_id: user.id, title, status: "todo", priority: 3, description: message }).select("id, title, status").single();
-        if (error) actionResult = { ok: false, error: "could not create task" };
-        else actionResult = { ok: true, output: { task: data } };
+      actionResult = result.execution ?? { ok: false, error: result.error ?? result.guard.reason };
+      await persistAction(supabase, user.id, action, actionResult, guard.risk);
+      if (!actionResult.ok) {
+        const failedReply = result.guard.decision === "REQUIRE_APPROVAL" ? "Diese Aktion braucht zuerst deine ausdrückliche Freigabe." : core.decision === "USE_TOOL" ? "Ich konnte die Recherche gerade nicht verlässlich ausführen." : core.decision === "CREATE_TASK" ? "Ich konnte die Aufgabe nicht ausführen." : "Ich konnte die Erinnerung nicht sicher speichern.";
+        await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: failedReply });
+        return NextResponse.json({ ok: false, conversationId, decision: core.decision, agent: core.agent, actionId, actionStatus: "failed", error: failedReply }, { status: result.guard.decision === "REQUIRE_APPROVAL" ? 403 : 502 });
       }
 
-      if (actionResult.ok && core.decision === "SAVE_MEMORY") {
-        if (!explicitMemory) {
-          actionResult = { ok: false, error: "no safe memory content was found" };
-        } else {
-          const { data: existing, error: existingError } = await supabase.from("memories").select("id").eq("user_id", user.id).eq("content", explicitMemory).maybeSingle();
-          if (existingError) actionResult = { ok: false, error: "could not check memory" };
-          else if (!existing) {
-            const { error } = await supabase.from("memories").insert({ user_id: user.id, type: "instruction", content: explicitMemory, importance: 1, metadata: { source: "explicit_user_instruction", saved_via: "chat" } });
-            if (error) actionResult = { ok: false, error: "could not save memory" };
-            else memorySaved = true;
-          } else {
-            memorySaved = true;
-          }
-        }
-      }
-
-      if (actionResult.ok && core.decision === "USE_TOOL") {
+      if (core.decision === "SAVE_MEMORY") memorySaved = true;
+      if (core.decision === "USE_TOOL") {
         const results = Array.isArray(actionResult.output?.results) ? actionResult.output.results as Array<{ title: string; url: string; snippet?: string }> : [];
         searchPerformed = results.length > 0;
         searchContext = results.length
-          ? `\n\nVerified research results:\n${results.map((result) => `- ${result.title}: ${result.url}\n  ${result.snippet ?? ""}`).join("\n")}`
+          ? `\n\nVerified research results:\n${results.map((item) => `- ${item.title}: ${item.url}\n  ${item.snippet ?? ""}`).join("\n")}`
           : "\n\nNo verified search results were returned.";
-      }
-
-      await persistAction(supabase, user.id, action, actionResult, guard.risk);
-      if (!actionResult.ok) {
-        const failedReply = core.decision === "USE_TOOL" ? "Ich konnte die Recherche gerade nicht verlässlich ausführen." : core.decision === "CREATE_TASK" ? "Ich konnte die Aufgabe nicht ausführen." : "Ich konnte die Erinnerung nicht sicher speichern.";
-        await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: failedReply });
-        return NextResponse.json({ ok: false, conversationId, decision: core.decision, agent: core.agent, actionId, actionStatus: "failed", error: failedReply }, { status: 502 });
       }
     }
 
-    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? (actionResult.ok ? "completed" : "failed") : "not applicable"}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is marked completed, acknowledge the actual completed operation. If no action was executed, do not claim that one was completed.${searchContext}`;
+    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? "completed" : "not applicable"}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is completed, acknowledge the actual completed operation. Do not claim an action was completed unless the execution status says completed.${searchContext}`;
     const response = await getOpenAI().responses.create({
       model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
       instructions,
