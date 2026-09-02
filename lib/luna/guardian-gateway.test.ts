@@ -32,5 +32,38 @@ test("Guardian Gateway preserves explicit approval for protected shop publishing
   });
   assert.equal(result.guard.allowed, true);
   assert.equal(result.ok, false);
-  assert.match(result.error ?? "", /provider/i);
+  assert.match(result.error ?? "", /handler/i);
+});
+
+test("Guardian Gateway executes a safe action only through its handler", async () => {
+  let called = false;
+  const result = await executeThroughGuardian({
+    agent: "research",
+    capability: "search",
+    mode: "read",
+    action: createAction("tool", { tool: "search" }),
+    context: {
+      authenticated: true,
+      handler: async () => {
+        called = true;
+        return { result: "verified" };
+      },
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(called, true);
+  assert.equal(result.execution?.action.status, "completed");
+});
+
+test("an authorized action without a handler never becomes completed", async () => {
+  const result = await executeThroughGuardian({
+    agent: "research",
+    capability: "search",
+    mode: "read",
+    action: createAction("tool", { tool: "search" }),
+    context: { authenticated: true },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.execution?.action.status, "failed");
+  assert.match(result.error ?? "", /handler/i);
 });

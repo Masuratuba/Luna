@@ -8,6 +8,7 @@ export type ToolPermission = {
 };
 
 const DEFAULT_PERMISSIONS: ToolPermission[] = [
+  { tool: "search", level: "read", requiresConfirmation: false },
   { tool: "memory.read", level: "read", requiresConfirmation: false },
   { tool: "memory.write", level: "write", requiresConfirmation: false },
   { tool: "task.create", level: "write", requiresConfirmation: false },

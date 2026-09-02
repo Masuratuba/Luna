@@ -35,7 +35,11 @@ export function classifyRisk(action: LunaAction): GuardRisk {
   const tool = toolName(action);
   if (CRITICAL_TOOLS.has(tool) || (action.type === "task" && action.input.destructive === true)) return "CRITICAL";
   if (PROTECTED_TOOLS.has(tool) || action.type === "memory" || action.type === "task") return "PROTECTED";
-  if (action.type === "tool") return "CRITICAL";
+  if (action.type === "tool") {
+    const permission = getToolPermission(tool);
+    if (permission.level === "read" && !permission.requiresConfirmation) return "SAFE";
+    return "CRITICAL";
+  }
   return "SAFE";
 }
 
