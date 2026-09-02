@@ -38,9 +38,7 @@ export async function executeActionSafely(action: LunaAction, context: ActionExe
     confirmationToken: context.confirmationToken,
   };
   const guard = checkGuard(guardRequest);
-  if (!guard.allowed) {
-    return { action: { ...action, status: "failed" }, ok: false, error: guard.reason, guard };
-  }
+  if (!guard.allowed) return { action: { ...action, status: "failed" }, ok: false, error: guard.reason, guard };
 
   const toolName = action.type === "tool" ? String(action.input.tool ?? "") : "";
   const permission = action.type === "tool" ? getToolPermission(toolName) : null;
@@ -49,7 +47,12 @@ export async function executeActionSafely(action: LunaAction, context: ActionExe
   }
 
   if (!context.executeDomainAction) {
-    return { action: { ...action, status: "failed" }, ok: false, error: "domain action executor not configured", guard };
+    return {
+      action: { ...action, status: "failed" },
+      ok: false,
+      error: action.type === "tool" ? "tool provider not configured" : "domain action executor not configured",
+      guard,
+    };
   }
 
   try {
@@ -57,11 +60,6 @@ export async function executeActionSafely(action: LunaAction, context: ActionExe
     return { action: { ...action, status: "completed" }, ok: true, output, guard };
   } catch (error) {
     console.error("Luna action execution error", error);
-    return {
-      action: { ...action, status: "failed" },
-      ok: false,
-      error: "domain action execution failed",
-      guard,
-    };
+    return { action: { ...action, status: "failed" }, ok: false, error: "domain action execution failed", guard };
   }
 }
