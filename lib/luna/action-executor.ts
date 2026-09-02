@@ -12,6 +12,8 @@ export type ActionExecutionContext = {
   confirmationToken?: string;
   /** Only the Guardian Gateway may set this to true. */
   gatewayAuthorized?: boolean;
+  /** Server-side domain operation supplied by the caller behind the gateway. */
+  executeDomainAction?: (action: LunaAction) => Promise<Record<string, unknown>>;
 };
 
 export type ActionExecutionResult = {
@@ -22,10 +24,7 @@ export type ActionExecutionResult = {
   guard?: ReturnType<typeof checkGuard>;
 };
 
-export async function executeActionSafely(
-  action: LunaAction,
-  context: ActionExecutionContext,
-): Promise<ActionExecutionResult> {
+export async function executeActionSafely(action: LunaAction, context: ActionExecutionContext): Promise<ActionExecutionResult> {
   if (context.gatewayAuthorized !== true) {
     return { action: { ...action, status: "failed" }, ok: false, error: "guardian gateway authorization required" };
   }
@@ -39,9 +38,7 @@ export async function executeActionSafely(
     confirmationToken: context.confirmationToken,
   };
   const guard = checkGuard(guardRequest);
-  if (!guard.allowed) {
-    return { action: { ...action, status: "failed" }, ok: false, error: guard.reason, guard };
-  }
+  if (!guard.allowed) return { action: { ...action, status: "failed" }, ok: false, error: guard.reason, guard };
 
   const toolName = action.type === "tool" ? String(action.input.tool ?? "") : "";
   const permission = action.type === "tool" ? getToolPermission(toolName) : null;
@@ -49,9 +46,20 @@ export async function executeActionSafely(
     return { action: { ...action, status: "failed" }, ok: false, error: "explicit confirmation required", guard };
   }
 
-  if (action.type !== "tool") {
-    return { action: { ...action, status: "completed" }, ok: true, output: { executed: true, type: action.type }, guard };
+  if (!context.executeDomainAction) {
+    return {
+      action: { ...action, status: "failed" },
+      ok: false,
+      error: action.type === "tool" ? "tool provider not configured" : "domain action executor not configured",
+      guard,
+    };
   }
 
-  return { action: { ...action, status: "failed" }, ok: false, error: "tool provider not configured", guard };
+  try {
+    const output = await context.executeDomainAction(action);
+    return { action: { ...action, status: "completed" }, ok: true, output, guard };
+  } catch (error) {
+    console.error("Luna action execution error", error);
+    return { action: { ...action, status: "failed" }, ok: false, error: "domain action execution failed", guard };
+  }
 }
