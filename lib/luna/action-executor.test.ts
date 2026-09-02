@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { executeActionSafely } from "./action-executor";
-import { ExternalTrustedAuthAdapter } from "./trusted-auth";
+import { ExternalTrustedAuthAdapter, type TrustedAdminContext } from "./trusted-auth";
 
-function trustedAdmin() {
+function trustedAdmin(): TrustedAdminContext {
   const now = Date.now();
-  return new ExternalTrustedAuthAdapter("test").verify({
+  const context = new ExternalTrustedAuthAdapter("test").verify({
     subject: "user-1",
     role: "admin",
     issuer: "test",
@@ -13,6 +13,8 @@ function trustedAdmin() {
     expiresAt: now + 60_000,
     nonce: "nonce",
   });
+  assert.ok(context);
+  return context;
 }
 
 test("action executor requires guardian gateway authorization", async () => {
