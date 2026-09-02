@@ -72,6 +72,27 @@ test("commerce adapter normalizes provider endpoint before appending routes", as
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("analytics adapter validates provider response at the adapter boundary", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ value: "42", source: "untrusted" }), { status: 200, headers: { "content-type": "application/json" } });
+  try { await assert.rejects(() => new HttpAnalyticsProvider("https://analytics.test").measure({ metric: "events" }), /ANALYTICS_INVALID_PROVIDER_RESPONSE/); }
+  finally { globalThis.fetch = originalFetch; }
+});
+
+test("commerce list adapter validates provider products at the adapter boundary", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify([{ id: "1", title: "Item", price: -1 }]), { status: 200, headers: { "content-type": "application/json" } });
+  try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").listProducts(), /COMMERCE_INVALID_PRICE/); }
+  finally { globalThis.fetch = originalFetch; }
+});
+
+test("commerce publish adapter validates provider result at the adapter boundary", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ id: "1", published: "yes" }), { status: 200, headers: { "content-type": "application/json" } });
+  try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").publishProduct({ id: "1", title: "Item" }), /COMMERCE_INVALID_RESPONSE/); }
+  finally { globalThis.fetch = originalFetch; }
+});
+
 test("financial adapter cannot move money before explicit integration", async () => {
   const provider = new DisabledFinancialProvider();
   await assert.rejects(() => provider.transfer(), /FINANCIAL_TRANSFER_DISABLED/);
