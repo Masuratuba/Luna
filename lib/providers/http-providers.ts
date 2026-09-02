@@ -1,16 +1,14 @@
 import type { AnalyticsProvider, AnalyticsRequest, AnalyticsResult, CommerceProduct, CommerceProvider, SearchProvider, SearchRequest, SearchResult } from "./contracts";
 import { getOpenAI } from "../openai";
+import { validateAnalyticsResult } from "./analytics-validation";
+import { validateCommerceProducts, validatePublishResult } from "./commerce-validation";
 
 const PROVIDER_TIMEOUT_MS = 15_000;
 const DEFAULT_SEARCH_LIMIT = 5;
 const MAX_SEARCH_LIMIT = 10;
 
 type WebCitation = Readonly<{ url?: unknown; title?: unknown }>;
-
-type SearchOutput = Readonly<{
-  output_text?: unknown;
-  output?: unknown;
-}>;
+type SearchOutput = Readonly<{ output_text?: unknown; output?: unknown }>;
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -59,7 +57,7 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
-  return results.length > 0 ? results : [];
+  return results;
 }
 
 async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
@@ -75,14 +73,12 @@ async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise
     if (error instanceof DOMException && error.name === "TimeoutError") throw new Error("PROVIDER_REQUEST_TIMEOUT");
     throw error;
   }
-
   if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.toLowerCase().includes("application/json")) throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
   return response.json() as Promise<T>;
 }
 
-/** Production search adapter. Search is routed through the server-side OpenAI web-search capability. */
 export class HttpSearchProvider implements SearchProvider {
   readonly name = "openai-web-search";
   async search(request: SearchRequest): Promise<readonly SearchResult[]> {
@@ -91,12 +87,7 @@ export class HttpSearchProvider implements SearchProvider {
     const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
-    const response = await getOpenAI().responses.create({
-      model,
-      input: query,
-      tools: [{ type: "web_search", search_context_size: "high" }],
-      store: false,
-    });
+    const response = await getOpenAI().responses.create({ model, input: query, tools: [{ type: "web_search", search_context_size: "high" }], store: false });
     return extractSearchResults(response, limit);
   }
 }
@@ -106,7 +97,8 @@ export class HttpAnalyticsProvider implements AnalyticsProvider {
   constructor(private readonly endpoint = process.env.ANALYTICS_PROVIDER_URL, private readonly apiKey = process.env.ANALYTICS_PROVIDER_API_KEY) {}
   async measure(request: AnalyticsRequest): Promise<AnalyticsResult> {
     if (!this.endpoint) throw new Error("ANALYTICS_PROVIDER_URL is not configured");
-    return postJson<AnalyticsResult>(normalizeProviderEndpoint(this.endpoint), request, this.apiKey);
+    const rawResult = await postJson<unknown>(normalizeProviderEndpoint(this.endpoint), request, this.apiKey);
+    return validateAnalyticsResult(rawResult);
   }
 }
 
@@ -115,10 +107,12 @@ export class HttpCommerceProvider implements CommerceProvider {
   constructor(private readonly endpoint = process.env.COMMERCE_PROVIDER_URL, private readonly apiKey = process.env.COMMERCE_PROVIDER_API_KEY) {}
   async listProducts(query?: string): Promise<readonly CommerceProduct[]> {
     if (!this.endpoint) throw new Error("COMMERCE_PROVIDER_URL is not configured");
-    return postJson<CommerceProduct[]>(`${normalizeProviderEndpoint(this.endpoint)}/products/search`, { query }, this.apiKey);
+    const rawProducts = await postJson<unknown>(`${normalizeProviderEndpoint(this.endpoint)}/products/search`, { query }, this.apiKey);
+    return validateCommerceProducts(rawProducts);
   }
   async publishProduct(product: CommerceProduct): Promise<{ id: string; published: boolean }> {
     if (!this.endpoint) throw new Error("COMMERCE_PROVIDER_URL is not configured");
-    return postJson<{ id: string; published: boolean }>(`${normalizeProviderEndpoint(this.endpoint)}/products/publish`, product, this.apiKey);
+    const rawResult = await postJson<unknown>(`${normalizeProviderEndpoint(this.endpoint)}/products/publish`, product, this.apiKey);
+    return validatePublishResult(rawResult);
   }
 }
