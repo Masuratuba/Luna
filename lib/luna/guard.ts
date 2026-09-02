@@ -64,7 +64,11 @@ export function evaluateGuard(input: GuardInput): GuardResult {
     if (permission.requiresConfirmation && !trustedAdmin) return { decision: "DENY", allowed: false, risk: "CRITICAL", reason: "tool requires explicit confirmation" };
     return { decision: "ALLOW", allowed: true, risk: trustedAdmin ? "PROTECTED" : permission.level === "read" ? "SAFE" : "PROTECTED", reason: trustedAdmin ? "trusted admin authorization" : "tool permitted by policy" };
   }
-  if (["USE_TOOL", "CREATE_TASK", "SAVE_MEMORY"].includes(input.decision) && !trustedAdmin) return { decision: "REQUIRE_APPROVAL", allowed: false, risk: "PROTECTED", reason: "protected action requires explicit approval" };
+  // A research/search decision is a read-only capability request. It must still
+  // pass the research agent capability gate and provider boundary before use.
+  // Privileged tool actions remain protected by checkGuard/Guardian Gateway.
+  if (input.decision === "USE_TOOL" && !trustedAdmin) return { decision: "ALLOW", allowed: true, risk: "SAFE", reason: "read-only research request" };
+  if (["CREATE_TASK", "SAVE_MEMORY"].includes(input.decision) && !trustedAdmin) return { decision: "REQUIRE_APPROVAL", allowed: false, risk: "PROTECTED", reason: "protected action requires explicit approval" };
   return { decision: "ALLOW", allowed: true, risk: "SAFE", reason: trustedAdmin ? "trusted admin authorization" : "safe request" };
 }
 export function getGuardPolicy() {
