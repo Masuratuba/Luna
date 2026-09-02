@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { getOpenAI } from "../../../lib/openai";
 import { LUNA_SYSTEM_PROMPT } from "../../../lib/luna/prompt";
 import { runLunaCore, createAction, createEvent, createAuditEntry } from "../../../lib/luna/core";
 import { evaluateGuard } from "../../../lib/luna/guard";
+import { getAgentAccess } from "../../../lib/luna/agent-isolation";
 import { extractExplicitMemory } from "../../../lib/luna/memory";
 import { requireUser } from "../../../lib/supabase/auth";
+import { createProviderRegistry } from "../../../lib/providers/registry";
+import { getOpenAI } from "../../../lib/openai";
+
+const MAX_CHAT_MESSAGE_CHARS = 20_000;
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +17,7 @@ export async function POST(request: Request) {
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const requestedConversationId = typeof body.conversationId === "string" && body.conversationId.trim() ? body.conversationId.trim() : null;
     if (!message) return NextResponse.json({ error: "message is required" }, { status: 400 });
+    if (message.length > MAX_CHAT_MESSAGE_CHARS) return NextResponse.json({ error: "message is too long" }, { status: 413 });
 
     let conversationId = requestedConversationId;
     if (conversationId) {
@@ -55,19 +60,33 @@ export async function POST(request: Request) {
 
     const history = [...(recentMessages ?? [])].reverse();
     const memoryContext = (memories ?? []).map((memory) => `[${memory.type}] ${memory.content}`).join("\n");
-    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: If the user explicitly asks you to remember something, acknowledge that it was saved. Never claim to remember secrets or credentials.`;
     const searchRequested = core.decision === "USE_TOOL";
+    let searchPerformed = false;
+    let searchContext = "";
+
+    if (searchRequested) {
+      const access = getAgentAccess("research", "search", "read");
+      if (!access.allowed) return NextResponse.json({ ok: false, blocked: true, risk: "PROTECTED", error: access.reason }, { status: 403 });
+      const provider = createProviderRegistry().search();
+      const results = await provider.search({ query: message, limit: 5 });
+      searchPerformed = results.length > 0;
+      searchContext = results.length
+        ? `\n\nVerified research results from ${provider.name}:\n${results.map((result) => `- ${result.title}: ${result.url}\n  ${result.snippet}`).join("\n")}`
+        : "\n\nNo verified search results were returned.";
+    }
+
+    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: If the user explicitly asks you to remember something, acknowledge that it was saved. Never claim to remember secrets or credentials.${searchContext}`;
     const response = await getOpenAI().responses.create({
       model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
       instructions,
-      ...(searchRequested ? { tools: [{ type: "web_search", search_context_size: "high" as const }] } : {}),
+      store: false,
       input: history.map((item) => ({ role: item.role, content: item.content })),
     });
     const reply = response.output_text || "Ich konnte gerade keine Antwort erzeugen.";
 
     if (core.decision === "CREATE_TASK" || core.decision === "USE_TOOL" || core.decision === "SAVE_MEMORY") {
       const actionType = core.decision === "CREATE_TASK" ? "task" : core.decision === "SAVE_MEMORY" ? "memory" : "tool";
-      const action = createAction(actionType, { message, conversationId, agent: core.agent, searchRequested, memorySaved });
+      const action = createAction(actionType, { message, conversationId, agent: core.agent, searchRequested, searchPerformed, memorySaved });
       await supabase.from("luna_actions").insert({ id: action.id, user_id: user.id, type: action.type, status: action.status, input: action.input });
       const actionEvent = createEvent("action.created", user.id, { actionId: action.id, type: action.type, agent: core.agent });
       await supabase.from("luna_events").insert({ user_id: user.id, event_type: actionEvent.type, data: actionEvent.data });
@@ -78,12 +97,12 @@ export async function POST(request: Request) {
     if (assistantMessageError) throw assistantMessageError;
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
 
-    const completionEvent = createEvent("action.completed", user.id, { conversationId, decision: core.decision, agent: core.agent, searchRequested, memorySaved });
+    const completionEvent = createEvent("action.completed", user.id, { conversationId, decision: core.decision, agent: core.agent, searchRequested, searchPerformed, memorySaved });
     const completionAudit = createAuditEntry(completionEvent, "success");
     await supabase.from("luna_events").insert({ user_id: user.id, event_type: completionEvent.type, data: completionEvent.data });
     await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: completionAudit.type, outcome: completionAudit.outcome, risk: guard.risk, data: completionAudit.data });
 
-    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, memorySaved, searchPerformed: searchRequested, reply });
+    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, memorySaved, searchPerformed, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
@@ -91,8 +110,8 @@ export async function POST(request: Request) {
       if (error.message === "OWNER_AUTH_INVALID") return NextResponse.json({ error: "owner authentication is invalid" }, { status: 503 });
     }
     console.error("Luna chat error", error);
-    const err = error as { message?: string; status?: number; code?: string };
+    const err = error as { status?: number };
     const status = Number(err?.status);
-    return NextResponse.json({ error: "LUNA API-Fehler", detail: err?.message || "Unbekannter Fehler", code: err?.code || null }, { status: status >= 400 && status < 600 ? status : 500 });
+    return NextResponse.json({ error: "LUNA API-Fehler" }, { status: status >= 400 && status < 600 ? status : 500 });
   }
 }
