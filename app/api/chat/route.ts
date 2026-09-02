@@ -9,7 +9,6 @@ import { createProviderRegistry } from "../../../lib/providers/registry";
 import { getOpenAI } from "../../../lib/openai";
 
 const MAX_CHAT_MESSAGE_CHARS = 20_000;
-
 type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
 type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: string };
 
@@ -29,8 +28,10 @@ async function createPendingAction(supabase: SupabaseClient, userId: string, act
   const { error } = await supabase.from("luna_actions").insert({ id: action.id, user_id: userId, type: action.type, status: action.status, input: action.input });
   if (error) throw error;
   const event = createEvent("action.created", userId, { actionId: action.id, type: action.type, agent });
-  await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
-  await supabase.from("luna_audit_log").insert({ user_id: userId, event_type: event.type, outcome: "success", data: event.data });
+  const { error: eventError } = await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
+  if (eventError) throw eventError;
+  const { error: auditError } = await supabase.from("luna_audit_log").insert({ user_id: userId, event_type: event.type, outcome: "success", data: event.data });
+  if (auditError) throw auditError;
 }
 
 function taskTitle(message: string) {
@@ -85,7 +86,8 @@ export async function POST(request: Request) {
 
     if (actionDecision) {
       const actionType = core.decision === "CREATE_TASK" ? "task" : core.decision === "SAVE_MEMORY" ? "memory" : "tool";
-      const action = createAction(actionType, { message, conversationId, agent: core.agent });
+      const actionInput = core.decision === "USE_TOOL" ? { message, conversationId, agent: core.agent, tool: "search" } : { message, conversationId, agent: core.agent };
+      const action = createAction(actionType, actionInput);
       actionId = action.id;
       await createPendingAction(supabase, user.id, action, core.agent);
       const explicitMemory = extractExplicitMemory(message);
