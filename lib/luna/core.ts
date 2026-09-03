@@ -4,7 +4,7 @@ import type { LunaContext, LunaDecision } from "./types";
 import type { GuardRisk } from "./guard";
 
 export type LunaAction = { id: string; type: "task" | "tool" | "memory"; status: "pending" | "approved" | "completed" | "failed"; input: Record<string, unknown> };
-export type LunaEvent = { type: "message.received" | "decision.made" | "guard.checked" | "action.created" | "action.completed"; userId: string; timestamp: string; data: Record<string, unknown> };
+export type LunaEvent = { type: "message.received" | "decision.made" | "guard.checked" | "action.created" | "action.completed" | "action.failed"; userId: string; timestamp: string; data: Record<string, unknown> };
 export type LunaAuditEntry = LunaEvent & { outcome: "allowed" | "blocked" | "success" | "failure" };
 export function createAction(type: LunaAction["type"], input: Record<string, unknown>): LunaAction { return { id: crypto.randomUUID(), type, status: "pending", input }; }
 export function createEvent(type: LunaEvent["type"], userId: string, data: Record<string, unknown>): LunaEvent { return { type, userId, timestamp: new Date().toISOString(), data }; }
