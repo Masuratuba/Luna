@@ -9,7 +9,7 @@ const baseContext = {
 };
 
 test("executor fails closed when the Guardian gateway has not authorized the action", async () => {
-  const action = createAction("task", { title: "test" });
+  const action = createAction("tool", { tool: "search" });
   const result = await executeActionSafely(action, baseContext);
 
   assert.equal(result.ok, false);
@@ -18,25 +18,25 @@ test("executor fails closed when the Guardian gateway has not authorized the act
 });
 
 test("executor completes only after an authorized handler succeeds", async () => {
-  const action = createAction("task", { title: "test" });
+  const action = createAction("tool", { tool: "search" });
   let handlerCalls = 0;
   const result = await executeActionSafely(action, {
     ...baseContext,
     gatewayAuthorized: true,
     handler: async () => {
       handlerCalls += 1;
-      return { taskId: "task-1" };
+      return { searchResults: 1 };
     },
   });
 
   assert.equal(handlerCalls, 1);
   assert.equal(result.ok, true);
   assert.equal(result.action.status, "completed");
-  assert.deepEqual(result.output, { taskId: "task-1" });
+  assert.deepEqual(result.output, { searchResults: 1 });
 });
 
 test("executor marks handler failures as failed and never reports completion", async () => {
-  const action = createAction("task", { title: "test" });
+  const action = createAction("tool", { tool: "search" });
   const result = await executeActionSafely(action, {
     ...baseContext,
     gatewayAuthorized: true,
