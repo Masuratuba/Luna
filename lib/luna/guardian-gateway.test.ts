@@ -32,7 +32,7 @@ test("Guardian Gateway preserves explicit approval for protected shop publishing
   });
   assert.equal(result.guard.allowed, true);
   assert.equal(result.ok, false);
-  assert.match(result.error ?? "", /handler|confirmation/i);
+  assert.match(result.error ?? "", /provider/i);
 });
 
 test("Guardian Gateway executes a safe action only through its handler", async () => {
