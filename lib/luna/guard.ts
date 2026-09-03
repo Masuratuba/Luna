@@ -5,7 +5,7 @@ import type { PermissionLevel } from "./permissions";
 import { TrustedAdminContext } from "./trusted-auth";
 
 /** Independent security boundary. Agents cannot modify or bypass this module. */
-/** The Guard is fail-closed: anything not explicitly authorized is blocked. */
+/** The Guard is fail-closed by default: anything not explicitly authorized is blocked. */
 export type GuardRisk = "SAFE" | "PROTECTED" | "CRITICAL";
 export type GuardDecision = "ALLOW" | "REQUIRE_APPROVAL" | "DENY";
 export type GuardRole = "user" | "agent" | "service" | "admin";
