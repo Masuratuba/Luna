@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         throw new Error("SCHEDULER_HANDLER_NOT_CONFIGURED");
       },
       executionContext: {
-        userId,
+        authenticated: false,
         approved: false,
       },
     });
