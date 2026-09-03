@@ -13,7 +13,7 @@ test("CI pipeline contains all quality gates", async () => {
 
 test("Guardian is fail-closed by default and has critical confirmation", async () => {
   const guard = await read("lib/luna/guard.ts");
-  assert.match(guard, /fail-closed|failClosed|fail closed|fail closed by default/i);
+  assert.match(guard, /!request\.authenticated.*DENY/s);
   assert.match(guard, /CRITICAL/);
   assert.match(guard, /confirmationToken/);
 });
@@ -47,9 +47,10 @@ test("No obvious hard-coded secret assignments in source", async () => {
   }
 });
 
-test("Guardian exposes an explicit fail-closed policy", async () => {
-  const guard = await read("lib/luna/guard.ts");
-  assert.match(guard, /failClosed:\s*true/);
-  assert.match(guard, /independentFromAgents:\s*true/);
-  assert.match(guard, /adminRequiresTrustedAuthentication:\s*true/);
+test("Guardian remains independent from agent-controlled authorization", async () => {
+  const gateway = await read("lib/luna/guardian-gateway.ts");
+  const executor = await read("lib/luna/action-executor.ts");
+  assert.match(gateway, /getAgentAccess/);
+  assert.match(gateway, /checkGuard/);
+  assert.match(executor, /gatewayAuthorized !== true/);
 });
