@@ -26,7 +26,9 @@ export type SchedulerAuditEvent = {
     | "task.started"
     | "task.completed"
     | "task.cancelled"
-    | "task.failed";
+    | "task.failed"
+    | "task.retry_scheduled"
+    | "task.recovered";
   at: string;
   detail?: string;
 };
@@ -53,6 +55,10 @@ export type SchedulerState = {
 
 function cloneTask(task: ScheduledTask): ScheduledTask {
   return { ...task };
+}
+
+function addMilliseconds(iso: string, milliseconds: number): string {
+  return new Date(new Date(iso).getTime() + milliseconds).toISOString();
 }
 
 export function scheduleTask(
@@ -138,6 +144,65 @@ export function applyExecutionResult(
   };
 }
 
+export function retryTask(
+  state: SchedulerState,
+  taskId: string,
+  delayMs: number,
+  now = new Date().toISOString(),
+): SchedulerState {
+  const task = state.tasks.find((candidate) => candidate.id === taskId);
+  if (!task || task.status !== "failed") return state;
+
+  const scheduledFor = addMilliseconds(now, Math.max(0, delayMs));
+  const updated = {
+    ...task,
+    status: "scheduled" as const,
+    scheduledFor,
+    startedAt: undefined,
+    failedAt: undefined,
+  };
+
+  return {
+    tasks: state.tasks.map((candidate) => (candidate.id === taskId ? updated : candidate)),
+    audit: [
+      ...state.audit,
+      { taskId, type: "task.retry_scheduled", at: now, detail: `retry scheduled for ${scheduledFor}` },
+    ],
+  };
+}
+
+export function recoverStaleRunningTasks(
+  state: SchedulerState,
+  staleAfterMs: number,
+  now = new Date().toISOString(),
+): SchedulerState {
+  const cutoff = new Date(now).getTime() - Math.max(0, staleAfterMs);
+  const recoveredIds: string[] = [];
+
+  const tasks = state.tasks.map((task) => {
+    if (task.status !== "running" || !task.startedAt) return task;
+    if (new Date(task.startedAt).getTime() > cutoff) return task;
+
+    recoveredIds.push(task.id);
+    return {
+      ...task,
+      status: "scheduled" as const,
+      scheduledFor: now,
+      startedAt: undefined,
+    };
+  });
+
+  if (recoveredIds.length === 0) return state;
+
+  return {
+    tasks,
+    audit: [
+      ...state.audit,
+      ...recoveredIds.map((taskId) => ({ taskId, type: "task.recovered" as const, at: now })),
+    ],
+  };
+}
+
 export function cancelTask(
   state: SchedulerState,
   taskId: string,
@@ -159,6 +224,8 @@ export function schedulerTruthRules(): string[] {
     "A task may enter running only after a scheduler selects it as due and an executor starts it.",
     "A task is completed only when the real executor reports success.",
     "Executor failure produces a failed task and an audit event; Luna must not claim success.",
+    "Retry scheduling is explicit and preserves the task id and attempt count.",
+    "Stale running tasks may be recovered, but the stable task action id must be treated as an idempotency key by side-effect handlers.",
     "Cancellation prevents a scheduled task from being selected, and completed work cannot be rewritten as cancelled.",
     "Authorization is fail-closed: protected tasks are not scheduled or executed without explicit authorization.",
     "This core does not send messages, call external services, write calendars, or persist state by itself.",
