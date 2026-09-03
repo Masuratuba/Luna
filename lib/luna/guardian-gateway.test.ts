@@ -27,12 +27,12 @@ test("Guardian Gateway preserves explicit approval for protected shop publishing
     agent: "shop",
     capability: "store.publish",
     mode: "execute",
-    action: createAction("tool", { tool: "store.publish" }),
+    action: createAction("tool", { tool: "shop.publish" }),
     context: { authenticated: true, approved: true, confirmationToken: "test-confirmation" },
   });
   assert.equal(result.guard.allowed, true);
   assert.equal(result.ok, false);
-  assert.match(result.error ?? "", /provider/i);
+  assert.match(result.error ?? "", /handler/i);
 });
 
 test("Guardian Gateway executes a safe action only through its handler", async () => {
