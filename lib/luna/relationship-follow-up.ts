@@ -92,7 +92,7 @@ export function selectFollowUp(
   now = new Date().toISOString(),
 ): FollowUpItem | null {
   const eligible = items
-    .filter((item) => item.status === "open")
+    .filter((item) => item.status === "open" || item.status === "snoozed")
     .filter((item) => !item.userBoundary)
     .filter((item) => !item.nextEligibleAt || item.nextEligibleAt <= now)
     .sort((a, b) => {
