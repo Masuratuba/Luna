@@ -22,17 +22,17 @@ test("Guardian Gateway blocks capabilities outside the agent policy", async () =
   assert.match(result.error ?? "", /denied|not allowed/i);
 });
 
-test("Guardian Gateway preserves explicit approval for protected shop publishing", async () => {
+test("Guardian Gateway keeps critical publishing blocked without confirmation token", async () => {
   const result = await executeThroughGuardian({
     agent: "shop",
     capability: "store.publish",
     mode: "execute",
     action: createAction("tool", { tool: "shop.publish" }),
-    context: { authenticated: true, approved: true, confirmationToken: "test-confirmation" },
+    context: { authenticated: true, approved: true },
   });
-  assert.equal(result.guard.allowed, true);
+  assert.equal(result.guard.allowed, false);
   assert.equal(result.ok, false);
-  assert.match(result.error ?? "", /handler/i);
+  assert.match(result.guard.reason, /confirmation/i);
 });
 
 test("Guardian Gateway executes a safe action only through its handler", async () => {
