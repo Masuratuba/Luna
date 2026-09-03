@@ -28,7 +28,7 @@ test("Guardian Gateway preserves explicit approval for protected shop publishing
     capability: "store.publish",
     mode: "execute",
     action: createAction("tool", { tool: "shop.publish" }),
-    context: { authenticated: true, approved: true },
+    context: { authenticated: true, approved: true, confirmationToken: "test-confirmation" },
   });
   assert.equal(result.guard.allowed, true);
   assert.equal(result.ok, false);
