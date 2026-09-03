@@ -13,7 +13,7 @@ test("CI pipeline contains all quality gates", async () => {
 
 test("Guardian is fail-closed and has critical confirmation", async () => {
   const guard = await read("lib/luna/guard.ts");
-  assert.match(guard, /fail-closed|failClosed|fail closed/i);
+  assert.match(guard, /fail-closed|failClosed|fail closed|fail closed by default/i);
   assert.match(guard, /CRITICAL/);
   assert.match(guard, /confirmationToken/);
 });
