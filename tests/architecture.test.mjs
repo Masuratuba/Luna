@@ -46,3 +46,10 @@ test("No obvious hard-coded secret assignments in source", async () => {
     assert.doesNotMatch(source, /(?:OPENAI_API_KEY|SUPABASE_SERVICE_ROLE_KEY|LUNA_OWNER_SECRET)\s*=\s*["'][^"']+["']/);
   }
 });
+
+test("Guardian exposes an explicit fail-closed policy", async () => {
+  const guard = await read("lib/luna/guard.ts");
+  assert.match(guard, /failClosed:\s*true/);
+  assert.match(guard, /independentFromAgents:\s*true/);
+  assert.match(guard, /adminRequiresTrustedAuthentication:\s*true/);
+});
