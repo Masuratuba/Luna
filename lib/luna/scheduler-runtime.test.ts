@@ -38,7 +38,9 @@ test("runtime retries executor failures with bounded exponential backoff", async
       },
     },
     executionContext: { authenticated: true, gatewayAuthorized: true },
-    handler: async () => ({ ok: false }),
+    handler: async () => {
+      throw new Error("temporary failure");
+    },
   });
 
   assert.equal(result.executed, true);
@@ -52,6 +54,7 @@ test("runtime retries executor failures with bounded exponential backoff", async
 test("runtime preserves a stable action id across retries for idempotent handlers", async () => {
   let current = dueState();
   const actionIds: string[] = [];
+  let attempts = 0;
 
   const first = await runSchedulerRuntimeTick({
     now: firstNow,
@@ -65,7 +68,9 @@ test("runtime preserves a stable action id across retries for idempotent handler
     executionContext: { authenticated: true, gatewayAuthorized: true },
     handler: async (action) => {
       actionIds.push(action.id);
-      return { ok: false };
+      attempts += 1;
+      if (attempts === 1) throw new Error("temporary failure");
+      return { accepted: true };
     },
   });
 
@@ -82,7 +87,7 @@ test("runtime preserves a stable action id across retries for idempotent handler
     executionContext: { authenticated: true, gatewayAuthorized: true },
     handler: async (action) => {
       actionIds.push(action.id);
-      return { ok: true };
+      return { accepted: true };
     },
   });
 
