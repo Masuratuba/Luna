@@ -14,9 +14,10 @@ type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: str
 
 async function persistAction(supabase: SupabaseClient, userId: string, action: ReturnType<typeof createAction>, result: ActionResult, risk: string) {
   const status = result.ok ? "completed" : "failed";
+  const eventType = result.ok ? "action.completed" : "action.failed";
   const { error: updateError } = await supabase.from("luna_actions").update({ status, output: result.output ?? (result.error ? { error: result.error } : null), updated_at: new Date().toISOString() }).eq("id", action.id).eq("user_id", userId);
   if (updateError) throw updateError;
-  const event = createEvent("action.completed", userId, { actionId: action.id, type: action.type, status, error: result.error ?? null });
+  const event = createEvent(eventType, userId, { actionId: action.id, type: action.type, status, error: result.error ?? null });
   const audit = createAuditEntry(event, result.ok ? "success" : "failure");
   const { error: eventError } = await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
   if (eventError) throw eventError;
