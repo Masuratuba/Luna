@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { LUNA_SYSTEM_PROMPT } from "../../../lib/luna/prompt";
 import { runLunaCore, createAction, createEvent, createAuditEntry } from "../../../lib/luna/core";
+import { assessIntelligence } from "../../../lib/luna/intelligence-core";
 import { evaluateGuard } from "../../../lib/luna/guard";
 import { extractExplicitMemory } from "../../../lib/luna/memory";
 import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
     if (memoryError) throw memoryError;
 
     const core = runLunaCore({ userId: user.id, message, conversationId });
+    const intelligence = assessIntelligence({ userId: user.id, message, conversationId });
     const guard = evaluateGuard({ userId: user.id, message, decision: core.decision, role, trustedAdmin });
     const guardEvent = createEvent("guard.checked", user.id, { decision: core.decision, agent: core.agent, agentApproved: core.dispatch.approved, role, trustedAdmin: Boolean(trustedAdmin), risk: guard.risk });
     await supabase.from("luna_events").insert({ user_id: user.id, event_type: guardEvent.type, data: guardEvent.data });
@@ -142,7 +144,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? "completed" : "not applicable"}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is completed, acknowledge the actual completed operation. Do not claim an action was completed unless the execution status says completed.${searchContext}`;
+    const learningContext = intelligence.learningSignals.length
+      ? `Detected learning signals (do not persist automatically):\n${intelligence.learningSignals.map((signal) => `- ${signal.type} (${signal.confidence}): ${signal.content}`).join("\n")}`
+      : "No durable learning signal detected from this message.";
+    const followUpContext = intelligence.followUp.relevant
+      ? `A focused getting-to-know-you follow-up may be useful. Suggested question: ${intelligence.followUp.suggestedQuestion}`
+      : "Do not force a getting-to-know-you question in this turn.";
+    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? "completed" : "not applicable"}\nEpistemic state: ${intelligence.epistemic}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nIntelligence guidance:\n${learningContext}\n${followUpContext}\n\nTruth rules:\n${intelligence.truthRules.map((rule) => `- ${rule}`).join("\n")}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is completed, acknowledge the actual completed operation. Do not claim an action was completed unless the execution status says completed.${searchContext}`;
     const response = await getOpenAI().responses.create({
       model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
       instructions,
@@ -155,7 +163,7 @@ export async function POST(request: Request) {
     if (assistantMessageError) throw assistantMessageError;
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
 
-    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, reply });
+    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, intelligence: { epistemic: intelligence.epistemic, learningSignals: intelligence.learningSignals.length, followUpRelevant: intelligence.followUp.relevant }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
