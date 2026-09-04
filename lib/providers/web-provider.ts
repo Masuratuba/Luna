@@ -26,15 +26,15 @@ function validateUrl(raw: string): URL {
 
 function stripHtml(html: string): string {
   return html
-    .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
-    .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
-    .replace(/<noscript[\\s\\S]*?<\\/noscript>/gi, " ")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -79,9 +79,7 @@ export class HttpWebFetchProvider implements WebFetchProvider {
       }
       if (!response.ok) throw new Error(`WEB_REQUEST_FAILED:${response.status}`);
       const contentType = (response.headers.get("content-type") || "").toLowerCase();
-      if (!contentType.includes("text/html") && !contentType.includes("text/plain") && !contentType.includes("application/json")) {
-        throw new Error("WEB_UNSUPPORTED_CONTENT_TYPE");
-      }
+      if (!contentType.includes("text/html") && !contentType.includes("text/plain") && !contentType.includes("application/json")) throw new Error("WEB_UNSUPPORTED_CONTENT_TYPE");
       const raw = await readBody(response);
       const content = contentType.includes("text/html") ? stripHtml(raw) : raw.trim();
       return { url: url.toString(), content: content.slice(0, 50_000), truncated: content.length > 50_000, untrusted: true };
