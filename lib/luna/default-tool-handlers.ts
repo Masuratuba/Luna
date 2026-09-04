@@ -14,6 +14,12 @@ function limitInput(action: LunaAction): number | undefined {
   return Math.floor(value);
 }
 
+function recipientsInput(action: LunaAction): string[] {
+  const value = action.input.to;
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean);
+}
+
 /** Creates the server-side registry of concrete handlers available to Luna. */
 export function createDefaultToolHandlerRegistry(): ToolHandlerRegistry {
   const registry = createToolHandlerRegistry();
@@ -40,6 +46,43 @@ export function createDefaultToolHandlerRegistry(): ToolHandlerRegistry {
       unreadOnly: action.input.unreadOnly === true,
     });
     return { messages };
+  });
+
+  registry.register("mail.send", async (action, context): Promise<ActionExecutionOutput> => {
+    const to = recipientsInput(action);
+    const subject = stringInput(action, "subject");
+    const text = stringInput(action, "text");
+    const threadId = stringInput(action, "threadId") || undefined;
+
+    try {
+      const result = await providers.mailSend().sendMessage({
+        userId: context.userId,
+        to,
+        subject,
+        text,
+        threadId,
+      });
+      await providers.audit().record({
+        userId: context.userId,
+        action: "mail.send",
+        outcome: "queued",
+        resourceId: result.providerMessageId,
+      });
+      return { providerMessageId: result.providerMessageId, queued: result.queued };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "MAIL_SEND_FAILED";
+      try {
+        await providers.audit().record({
+          userId: context.userId,
+          action: "mail.send",
+          outcome: "failed",
+          error: message,
+        });
+      } catch {
+        // Preserve the original execution error if audit recording also fails.
+      }
+      throw error;
+    }
   });
 
   return registry;
