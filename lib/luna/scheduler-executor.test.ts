@@ -2,8 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { runSchedulerTick } from "./scheduler-executor";
 import type { SchedulerState } from "./event-scheduler";
+import { ExternalTrustedAuthAdapter } from "./trusted-auth";
 
 const now = "2026-09-03T20:00:00.000Z";
+const identity = new ExternalTrustedAuthAdapter("scheduler-test").verifyIdentity({
+  subject: "user-1",
+  role: "user",
+  issuer: "scheduler-test",
+  issuedAt: 1_000,
+  expiresAt: 2_000,
+  nonce: "scheduler-nonce",
+  scopes: ["task:create"],
+}, 1_500)!;
 
 function state(): SchedulerState {
   return {
@@ -41,6 +51,8 @@ test("scheduler tick persists running state before execution and completes on ex
     },
     executionContext: {
       authenticated: true,
+      userId: "user-1",
+      identity,
       gatewayAuthorized: true,
     },
     handler: async (action) => {
@@ -72,6 +84,8 @@ test("scheduler tick fails closed when the executor is blocked", async () => {
     },
     executionContext: {
       authenticated: true,
+      userId: "user-1",
+      identity,
       gatewayAuthorized: false,
     },
     handler: async () => ({ ok: true }),
@@ -96,7 +110,7 @@ test("scheduler tick does nothing when no task is due", async () => {
         saveCount += 1;
       },
     },
-    executionContext: { authenticated: true, gatewayAuthorized: true },
+    executionContext: { authenticated: true, userId: "user-1", identity, gatewayAuthorized: true },
     handler: async () => ({ ok: true }),
   });
 
