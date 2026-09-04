@@ -13,7 +13,7 @@ const identity = new ExternalTrustedAuthAdapter("test-auth").verifyIdentity({
   issuedAt: 1_000,
   expiresAt: 2_000,
   nonce: "gateway-nonce",
-  scopes: ["luna:execute", "search:read"],
+  scopes: ["luna:*"]
 }, 1_500)!;
 
 const trustedContext = { authenticated: true, userId: "user-1", identity };
