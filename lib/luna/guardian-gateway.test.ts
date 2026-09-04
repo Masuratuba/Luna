@@ -4,10 +4,23 @@ import { executeThroughGuardian } from "./guardian-gateway";
 import { createAction } from "./core";
 import { createDefaultToolHandlerRegistry } from "./default-tool-handlers";
 import { createToolHandlerRegistry } from "./tool-handler-registry";
+import { ExternalTrustedAuthAdapter } from "./trusted-auth";
+
+const identity = new ExternalTrustedAuthAdapter("test-auth").verifyIdentity({
+  subject: "user-1",
+  role: "user",
+  issuer: "test-auth",
+  issuedAt: 1_000,
+  expiresAt: 2_000,
+  nonce: "gateway-nonce",
+  scopes: ["luna:execute", "search:read"],
+}, 1_500)!;
+
+const trustedContext = { authenticated: true, userId: "user-1", identity };
 
 test("direct action execution cannot bypass the Guardian Gateway", async () => {
   const { executeActionSafely } = await import("./action-executor");
-  const result = await executeActionSafely(createAction("tool", { tool: "external.send" }), { authenticated: true });
+  const result = await executeActionSafely(createAction("tool", { tool: "external.send" }), { authenticated: true, userId: "user-1", identity });
   assert.equal(result.ok, false);
   assert.match(result.error ?? "", /gateway/i);
 });
@@ -18,7 +31,7 @@ test("Guardian Gateway blocks capabilities outside the agent policy", async () =
     capability: "wallet.transfer",
     mode: "execute",
     action: createAction("tool", { tool: "wallet.transfer" }),
-    context: { authenticated: true },
+    context: trustedContext,
   });
   assert.equal(result.ok, false);
   assert.match(result.error ?? "", /denied|not allowed/i);
@@ -30,7 +43,7 @@ test("Guardian Gateway preserves explicit approval for protected shop publishing
     capability: "store.publish",
     mode: "execute",
     action: createAction("tool", { tool: "shop.publish" }),
-    context: { authenticated: true, approved: true, confirmationToken: "test-confirmation" },
+    context: { ...trustedContext, approved: true, confirmationToken: "test-confirmation" },
   });
   assert.equal(result.guard.allowed, true);
   assert.equal(result.ok, false);
@@ -50,7 +63,7 @@ test("Guardian Gateway executes a safe action only through its registered handle
     capability: "search",
     mode: "read",
     action: createAction("tool", { tool: "search" }),
-    context: { authenticated: true },
+    context: trustedContext,
     toolRegistry: registry,
   });
   assert.equal(result.ok, true);
@@ -72,7 +85,7 @@ test("Guardian Gateway rejects a known tool when its handler is not registered",
     capability: "search",
     mode: "read",
     action: createAction("tool", { tool: "search" }),
-    context: { authenticated: true },
+    context: trustedContext,
     toolRegistry: registry,
   });
   assert.equal(result.ok, false);
@@ -83,10 +96,31 @@ test("Guardian Gateway rejects a known tool when its handler is not registered",
 test("an authorized action without a handler never becomes completed", async () => {
   const { executeActionSafely } = await import("./action-executor");
   const result = await executeActionSafely(createAction("tool", { tool: "search" }), {
-    authenticated: true,
+    ...trustedContext,
     gatewayAuthorized: true,
   });
   assert.equal(result.ok, false);
   assert.equal(result.action.status, "failed");
   assert.match(result.error ?? "", /handler/i);
+});
+
+test("Guardian Gateway rejects a mismatched caller subject before execution", async () => {
+  let called = false;
+  const registry = createToolHandlerRegistry();
+  registry.register("search", async () => {
+    called = true;
+    return { result: "should-not-run" };
+  });
+
+  const result = await executeThroughGuardian({
+    agent: "research",
+    capability: "search",
+    mode: "read",
+    action: createAction("tool", { tool: "search" }),
+    context: { ...trustedContext, userId: "user-2" },
+    toolRegistry: registry,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(called, false);
+  assert.match(result.error ?? "", /identity|authentication/i);
 });
