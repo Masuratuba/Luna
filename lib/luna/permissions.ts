@@ -12,6 +12,7 @@ const DEFAULT_PERMISSIONS: ToolPermission[] = [
   { tool: "memory.read", level: "read", requiresConfirmation: false },
   { tool: "memory.write", level: "write", requiresConfirmation: false },
   { tool: "task.create", level: "write", requiresConfirmation: false },
+  { tool: "shop.publish", level: "destructive", requiresConfirmation: true },
   { tool: "external.send", level: "destructive", requiresConfirmation: true },
   { tool: "data.delete", level: "destructive", requiresConfirmation: true },
 ];

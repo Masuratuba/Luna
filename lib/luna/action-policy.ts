@@ -14,6 +14,7 @@ const TOOL_POLICY: Record<string, { risk: LunaRisk; requiresConfirmation: boolea
   "memory.read": { risk: "safe", requiresConfirmation: false },
   "memory.write": { risk: "sensitive", requiresConfirmation: false },
   "task.create": { risk: "sensitive", requiresConfirmation: false },
+  "shop.publish": { risk: "destructive", requiresConfirmation: true },
   "external.send": { risk: "destructive", requiresConfirmation: true },
   "data.delete": { risk: "destructive", requiresConfirmation: true },
 };

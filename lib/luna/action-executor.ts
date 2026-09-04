@@ -1,5 +1,5 @@
-import { getToolPermission } from "./permissions";
 import type { LunaAction } from "./core";
+import { evaluateActionPolicy } from "./action-policy";
 import { checkGuard, type GuardRequest } from "./guard";
 import type { GuardRole } from "./guard";
 import type { TrustedAdminContext } from "./trusted-auth";
@@ -45,10 +45,9 @@ export async function executeActionSafely(action: LunaAction, context: ActionExe
     return { action: { ...action, status: "failed" }, ok: false, error: guard.reason, guard };
   }
 
-  const toolName = action.type === "tool" ? String(action.input.tool ?? "") : "";
-  const permission = action.type === "tool" ? getToolPermission(toolName) : null;
-  if (permission?.requiresConfirmation && context.approved !== true) {
-    return { action: { ...action, status: "failed" }, ok: false, error: "explicit confirmation required", guard };
+  const policy = evaluateActionPolicy(action, context);
+  if (!policy.allowed) {
+    return { action: { ...action, status: "failed" }, ok: false, error: policy.reason, guard };
   }
 
   if (!context.handler) {
