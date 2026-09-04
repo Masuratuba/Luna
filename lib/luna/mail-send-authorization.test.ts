@@ -44,7 +44,7 @@ test("mail.send requires explicit approval and confirmation token", async () => 
 
   const noApproval = await executeActionSafely(action, context);
   assert.equal(noApproval.ok, false);
-  assert.equal(noApproval.error, "approval required");
+  assert.equal(noApproval.error, "critical action blocked without explicit confirmation");
 
   const approvalWithoutToken = await executeActionSafely(action, { ...context, approved: true });
   assert.equal(approvalWithoutToken.ok, false);
