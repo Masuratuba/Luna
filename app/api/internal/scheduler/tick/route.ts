@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseSchedulerPersistence } from "@/lib/luna/supabase-scheduler-persistence";
 import { runControlledSchedulerTrigger } from "@/lib/luna/scheduler-trigger";
+import { ExecutionBudget } from "@/lib/luna/execution-budget";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
       },
       executionContext: {
         authenticated: false,
+        userId,
+        budget: new ExecutionBudget(),
         approved: false,
       },
     });

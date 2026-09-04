@@ -24,6 +24,7 @@ test("Guardian accepts only verifier-created trusted admin context", () => {
     issuedAt: 1_000,
     expiresAt: 2_000,
     nonce: "n-2",
+    scopes: ["luna:*"]
   }, 1_500);
   assert.ok(trustedAdmin);
 

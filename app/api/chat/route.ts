@@ -5,6 +5,7 @@ import { assessIntelligence } from "../../../lib/luna/intelligence-core";
 import { evaluateGuard } from "../../../lib/luna/guard";
 import { extractExplicitMemory } from "../../../lib/luna/memory";
 import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
+import { ExecutionBudget } from "../../../lib/luna/execution-budget";
 import { requireUser } from "../../../lib/supabase/auth";
 import { createProviderRegistry } from "../../../lib/providers/registry";
 import { getOpenAI } from "../../../lib/openai";
@@ -42,7 +43,8 @@ function taskTitle(message: string) {
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user, role, trustedAdmin } = await requireUser(request);
+    const { supabase, user, role, trustedAdmin, identity } = await requireUser(request);
+    const budget = new ExecutionBudget();
     const body = await request.json();
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const requestedConversationId = typeof body.conversationId === "string" && body.conversationId.trim() ? body.conversationId.trim() : null;
@@ -103,8 +105,11 @@ export async function POST(request: Request) {
         action,
         context: {
           authenticated: true,
+          userId: user.id,
           role,
           trustedAdmin,
+          identity,
+          budget,
           handler: async () => {
             if (core.decision === "CREATE_TASK") {
               const { data, error } = await supabase.from("tasks").insert({ user_id: user.id, title: taskTitle(message), status: "todo", priority: 3, description: message }).select("id, title, status").single();
@@ -169,6 +174,7 @@ export async function POST(request: Request) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
       if (error.message === "SUPABASE_NOT_CONFIGURED") return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
       if (error.message === "OWNER_AUTH_INVALID") return NextResponse.json({ error: "owner authentication is invalid" }, { status: 503 });
+      if (error.message === "AUTH_IDENTITY_INVALID") return NextResponse.json({ error: "authenticated identity is invalid" }, { status: 503 });
     }
     console.error("Luna chat error", error);
     const err = error as { status?: number };
