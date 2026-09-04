@@ -4,6 +4,7 @@ import { checkGuard, type GuardRequest, type GuardResult } from "./guard";
 import type { LunaAction } from "./core";
 import { executeActionSafely, type ActionExecutionContext, type ActionExecutionResult } from "./action-executor";
 import type { ToolHandlerRegistry } from "./tool-handler-registry";
+import { TrustedAdminContext } from "./trusted-auth";
 
 export type GuardianGatewayRequest = {
   agent: LunaAgentId;
@@ -27,11 +28,13 @@ export type GuardianGatewayResult = {
 export async function executeThroughGuardian(request: GuardianGatewayRequest): Promise<GuardianGatewayResult> {
   const mode = request.mode ?? "read";
   const access = getAgentAccess(request.agent, request.capability, mode);
+  const identity = request.context.identity;
+  const trustedAdmin = identity instanceof TrustedAdminContext ? identity : request.context.trustedAdmin;
   const guardRequest: GuardRequest = {
     action: request.action,
-    authenticated: request.context.authenticated,
-    role: request.context.role,
-    trustedAdmin: request.context.trustedAdmin,
+    authenticated: Boolean(request.context.authenticated && identity),
+    role: identity?.role ?? request.context.role,
+    trustedAdmin,
     approved: request.context.approved,
     confirmationToken: request.context.confirmationToken,
   };
@@ -53,6 +56,8 @@ export async function executeThroughGuardian(request: GuardianGatewayRequest): P
 
   const execution = await executeActionSafely(request.action, {
     ...request.context,
+    role: identity?.role ?? request.context.role,
+    trustedAdmin,
     handler: handler ?? request.context.handler,
     gatewayAuthorized: true,
   });
