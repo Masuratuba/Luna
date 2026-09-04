@@ -65,29 +65,28 @@ test("default tool registry exposes the concrete search handler", () => {
   assert.equal(registry.resolve("unknown.tool"), undefined);
 });
 
-test("Guardian Gateway requires a registered handler when a tool registry is supplied", async () => {
-  const registry = createDefaultToolHandlerRegistry();
-  const result = await executeThroughGuardian({
-    agent: "research",
-    capability: "search",
-    mode: "read",
-    action: createAction("tool", { tool: "unknown.tool" }),
-    context: { authenticated: true },
-    toolRegistry: registry,
-  });
-  assert.equal(result.ok, false);
-  assert.match(result.error ?? "", /not registered|not permitted/i);
-});
-
-test("an authorized action without a handler never becomes completed", async () => {
+test("Guardian Gateway rejects a known tool when its handler is not registered", async () => {
+  const registry = createToolHandlerRegistry();
   const result = await executeThroughGuardian({
     agent: "research",
     capability: "search",
     mode: "read",
     action: createAction("tool", { tool: "search" }),
     context: { authenticated: true },
+    toolRegistry: registry,
   });
   assert.equal(result.ok, false);
-  assert.equal(result.execution?.action.status, "failed");
+  assert.equal(result.execution, undefined);
+  assert.match(result.error ?? "", /not registered/i);
+});
+
+test("an authorized action without a handler never becomes completed", async () => {
+  const { executeActionSafely } = await import("./action-executor");
+  const result = await executeActionSafely(createAction("tool", { tool: "search" }), {
+    authenticated: true,
+    gatewayAuthorized: true,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.action.status, "failed");
   assert.match(result.error ?? "", /handler/i);
 });
