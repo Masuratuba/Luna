@@ -23,6 +23,10 @@ export class TrustedUserContext {
     readonly expiresAt: number,
     readonly scopes: readonly string[],
   ) {}
+
+  static createVerified(assertion: TrustedAuthAssertion): TrustedUserContext {
+    return new TrustedUserContext(assertion.subject, assertion.role, assertion.issuer, assertion.nonce, assertion.issuedAt, assertion.expiresAt, assertion.scopes ?? []);
+  }
 }
 
 /** A trusted admin context can only be constructed by the verifier. */
@@ -66,7 +70,7 @@ export class ExternalTrustedAuthAdapter implements TrustedAuthVerifier {
   verifyIdentity(assertion: TrustedAuthAssertion, nowMs = Date.now()): TrustedUserContext | null {
     if (!this.validate(assertion, nowMs)) return null;
     if (assertion.role === "admin") return TrustedAdminContext.create(assertion);
-    return new TrustedUserContext(assertion.subject, assertion.role, assertion.issuer, assertion.nonce, assertion.issuedAt, assertion.expiresAt, assertion.scopes ?? []);
+    return TrustedUserContext.createVerified(assertion);
   }
 
   verify(assertion: TrustedAuthAssertion, nowMs = Date.now()): TrustedAdminContext | null {
