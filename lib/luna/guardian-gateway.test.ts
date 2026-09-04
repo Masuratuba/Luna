@@ -56,6 +56,13 @@ test("Guardian Gateway executes a safe action only through its handler", async (
   assert.equal(result.execution?.action.status, "completed");
 });
 
+test("default tool registry exposes the concrete search handler", () => {
+  const registry = createDefaultToolHandlerRegistry();
+  assert.equal(registry.has("search"), true);
+  assert.equal(typeof registry.resolve("search"), "function");
+  assert.equal(registry.resolve("unknown.tool"), undefined);
+});
+
 test("Guardian Gateway requires a registered handler when a tool registry is supplied", async () => {
   const registry = createDefaultToolHandlerRegistry();
   const result = await executeThroughGuardian({
