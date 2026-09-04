@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { executeThroughGuardian } from "./guardian-gateway";
 import { createAction } from "./core";
+import { createDefaultToolHandlerRegistry } from "./default-tool-handlers";
 
 test("direct action execution cannot bypass the Guardian Gateway", async () => {
   const { executeActionSafely } = await import("./action-executor");
@@ -53,6 +54,20 @@ test("Guardian Gateway executes a safe action only through its handler", async (
   assert.equal(result.ok, true);
   assert.equal(called, true);
   assert.equal(result.execution?.action.status, "completed");
+});
+
+test("Guardian Gateway requires a registered handler when a tool registry is supplied", async () => {
+  const registry = createDefaultToolHandlerRegistry();
+  const result = await executeThroughGuardian({
+    agent: "research",
+    capability: "search",
+    mode: "read",
+    action: createAction("tool", { tool: "unknown.tool" }),
+    context: { authenticated: true },
+    toolRegistry: registry,
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? "", /not registered|not permitted/i);
 });
 
 test("an authorized action without a handler never becomes completed", async () => {
