@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "node:test";
 import { DurableMailSendProvider } from "./mail-send-provider";
 
 describe("DurableMailSendProvider", () => {
