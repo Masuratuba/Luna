@@ -14,6 +14,23 @@ export interface WebFetchProvider {
   fetch(request: WebFetchRequest): Promise<WebFetchResult>;
 }
 
+export type MailReadRequest = Readonly<{ userId: string; limit?: number; unreadOnly?: boolean }>;
+export type MailMessage = Readonly<{
+  id: string;
+  providerMessageId: string;
+  threadId?: string;
+  from: string;
+  to: readonly string[];
+  subject: string;
+  text: string;
+  receivedAt: string;
+  unread: boolean;
+}>;
+export interface MailReadProvider {
+  readonly name: string;
+  listMessages(request: MailReadRequest): Promise<readonly MailMessage[]>;
+}
+
 export type AnalyticsRequest = Readonly<{ metric: string; dimensions?: Record<string, string> }>;
 export type AnalyticsResult = Readonly<{ value: number; unit?: string; source: string }>;
 export interface AnalyticsProvider {
