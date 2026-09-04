@@ -1,10 +1,11 @@
 import type { LunaAction } from "./core";
 import { executeActionSafely, type ActionExecutionContext, type ActionExecutionResult } from "./action-executor";
+import { ExecutionBudget } from "./execution-budget";
 
 /** Compatibility entry point for the action engine. All execution goes through LUNA Guard. */
 export async function executeAction(
   action: LunaAction,
-  context: ActionExecutionContext = { authenticated: false },
+  context: ActionExecutionContext = { authenticated: false, userId: "", budget: new ExecutionBudget() },
 ): Promise<ActionExecutionResult> {
   return executeActionSafely(action, context);
 }
