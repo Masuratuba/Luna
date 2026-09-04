@@ -3,7 +3,7 @@ import { evaluateActionPolicy } from "./action-policy";
 import { checkGuard, type GuardRequest } from "./guard";
 import type { GuardRole } from "./guard";
 import type { TrustedAdminContext, TrustedUserContext } from "./trusted-auth";
-import { isTrustedIdentityForSubject } from "./trusted-auth";
+import { hasTrustedScope, isTrustedIdentityForSubject } from "./trusted-auth";
 
 export type ActionExecutionOutput = Record<string, unknown>;
 export type ActionExecutionHandler = (action: LunaAction) => Promise<ActionExecutionOutput>;
@@ -32,6 +32,20 @@ export type ActionExecutionResult = {
   guard?: ReturnType<typeof checkGuard>;
 };
 
+function requiredScope(action: LunaAction): string | null {
+  if (action.type === "tool") {
+    const tool = String(action.input.tool ?? "").trim();
+    if (tool === "search") return "search:read";
+    if (tool === "memory.read") return "memory:read";
+    if (tool === "memory.write") return "memory:write";
+    if (tool === "task.create") return "task:create";
+    return `${tool}:execute`;
+  }
+  if (action.type === "memory") return "memory:write";
+  if (action.type === "task") return "task:create";
+  return null;
+}
+
 export async function executeActionSafely(action: LunaAction, context: ActionExecutionContext): Promise<ActionExecutionResult> {
   if (context.gatewayAuthorized !== true) {
     return { action: { ...action, status: "failed" }, ok: false, error: "guardian gateway authorization required" };
@@ -45,10 +59,15 @@ export async function executeActionSafely(action: LunaAction, context: ActionExe
     return { action: { ...action, status: "failed" }, ok: false, error: "trusted identity mismatch" };
   }
 
+  const scope = requiredScope(action);
+  if (scope && !hasTrustedScope(context.identity, scope)) {
+    return { action: { ...action, status: "failed" }, ok: false, error: `identity scope required: ${scope}` };
+  }
+
   const guardRequest: GuardRequest = {
     action,
     authenticated: true,
-    role: context.role,
+    role: context.identity.role,
     trustedAdmin: context.trustedAdmin,
     approved: context.approved,
     confirmationToken: context.confirmationToken,
