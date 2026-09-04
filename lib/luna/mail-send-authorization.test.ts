@@ -41,14 +41,15 @@ test("mail.send requires its dedicated mail:send scope", async () => {
 test("mail.send requires explicit approval and confirmation token", async () => {
   const action = createAction("tool", { tool: "mail.send" });
   const context = baseContext(["mail:send"]);
+  const blockedWithoutConfirmation = "critical action blocked without explicit confirmation";
 
   const noApproval = await executeActionSafely(action, context);
   assert.equal(noApproval.ok, false);
-  assert.equal(noApproval.error, "critical action blocked without explicit confirmation");
+  assert.equal(noApproval.error, blockedWithoutConfirmation);
 
   const approvalWithoutToken = await executeActionSafely(action, { ...context, approved: true });
   assert.equal(approvalWithoutToken.ok, false);
-  assert.equal(approvalWithoutToken.error, "confirmation token required");
+  assert.equal(approvalWithoutToken.error, blockedWithoutConfirmation);
 });
 
 test("mail.send reaches the handler only with scope, approval and confirmation", async () => {
