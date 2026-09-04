@@ -4,6 +4,7 @@ import { checkGuard, type GuardRequest } from "./guard";
 import type { GuardRole } from "./guard";
 import type { TrustedAdminContext, TrustedUserContext } from "./trusted-auth";
 import { hasTrustedScope, isTrustedIdentityForSubject } from "./trusted-auth";
+import { ExecutionBudget } from "./execution-budget";
 
 export type ActionExecutionOutput = Record<string, unknown>;
 export type ActionExecutionHandler = (action: LunaAction) => Promise<ActionExecutionOutput>;
@@ -18,6 +19,8 @@ export type ActionExecutionContext = {
   identity?: TrustedUserContext;
   approved?: boolean;
   confirmationToken?: string;
+  /** Shared request-scoped execution budget; callers must reuse it across a tool loop. */
+  budget: ExecutionBudget;
   /** Only the Guardian Gateway may set this to true. */
   gatewayAuthorized?: boolean;
   /** Server-side handler for the already-authorized action. */
@@ -80,6 +83,13 @@ export async function executeActionSafely(action: LunaAction, context: ActionExe
   const policy = evaluateActionPolicy(action, { authenticated: true, approved: context.approved });
   if (!policy.allowed) {
     return { action: { ...action, status: "failed" }, ok: false, error: policy.reason, guard };
+  }
+
+  try {
+    if (action.type === "tool") context.budget.consumeToolCall();
+    else context.budget.consumeAction();
+  } catch (error) {
+    return { action: { ...action, status: "failed" }, ok: false, error: error instanceof Error ? error.message : "execution budget exceeded", guard };
   }
 
   if (!context.handler) {
