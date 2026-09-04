@@ -5,6 +5,7 @@ import { createAction } from "./core";
 import { createDefaultToolHandlerRegistry } from "./default-tool-handlers";
 import { createToolHandlerRegistry } from "./tool-handler-registry";
 import { ExternalTrustedAuthAdapter } from "./trusted-auth";
+import { ExecutionBudget } from "./execution-budget";
 
 const identity = new ExternalTrustedAuthAdapter("test-auth").verifyIdentity({
   subject: "user-1",
@@ -16,11 +17,11 @@ const identity = new ExternalTrustedAuthAdapter("test-auth").verifyIdentity({
   scopes: ["luna:*"]
 }, 1_500)!;
 
-const trustedContext = { authenticated: true, userId: "user-1", identity };
+const trustedContext = { authenticated: true, userId: "user-1", identity, budget: new ExecutionBudget() };
 
 test("direct action execution cannot bypass the Guardian Gateway", async () => {
   const { executeActionSafely } = await import("./action-executor");
-  const result = await executeActionSafely(createAction("tool", { tool: "external.send" }), { authenticated: true, userId: "user-1", identity });
+  const result = await executeActionSafely(createAction("tool", { tool: "external.send" }), { authenticated: true, userId: "user-1", identity, budget: new ExecutionBudget() });
   assert.equal(result.ok, false);
   assert.match(result.error ?? "", /gateway/i);
 });
@@ -117,7 +118,7 @@ test("Guardian Gateway rejects a mismatched caller subject before execution", as
     capability: "search",
     mode: "read",
     action: createAction("tool", { tool: "search" }),
-    context: { ...trustedContext, userId: "user-2" },
+    context: { ...trustedContext, userId: "user-2", budget: new ExecutionBudget() },
     toolRegistry: registry,
   });
   assert.equal(result.ok, false);
