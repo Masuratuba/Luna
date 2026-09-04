@@ -28,6 +28,7 @@ function requiredScope(action: LunaAction): string | null {
     if (tool === "search") return "search:read";
     if (tool === "web.fetch") return "web:read";
     if (tool === "mail.read") return "mail:read";
+    if (tool === "mail.send") return "mail:send";
     if (tool === "memory.read") return "memory:read";
     if (tool === "memory.write") return "memory:write";
     if (tool === "task.create") return "task:create";

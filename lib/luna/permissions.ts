@@ -11,6 +11,7 @@ const DEFAULT_PERMISSIONS: ToolPermission[] = [
   { tool: "search", level: "read", requiresConfirmation: false },
   { tool: "web.fetch", level: "read", requiresConfirmation: false },
   { tool: "mail.read", level: "read", requiresConfirmation: false },
+  { tool: "mail.send", level: "destructive", requiresConfirmation: true },
   { tool: "memory.read", level: "read", requiresConfirmation: false },
   { tool: "memory.write", level: "write", requiresConfirmation: false },
   { tool: "task.create", level: "write", requiresConfirmation: false },
