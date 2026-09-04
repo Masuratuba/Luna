@@ -7,6 +7,13 @@ export interface SearchProvider {
   search(request: SearchRequest): Promise<readonly SearchResult[]>;
 }
 
+export type WebFetchRequest = Readonly<{ url: string }>;
+export type WebFetchResult = Readonly<{ url: string; content: string; truncated: boolean; untrusted: true }>;
+export interface WebFetchProvider {
+  readonly name: string;
+  fetch(request: WebFetchRequest): Promise<WebFetchResult>;
+}
+
 export type AnalyticsRequest = Readonly<{ metric: string; dimensions?: Record<string, string> }>;
 export type AnalyticsResult = Readonly<{ value: number; unit?: string; source: string }>;
 export interface AnalyticsProvider {
