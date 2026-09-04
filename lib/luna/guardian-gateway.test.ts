@@ -3,6 +3,7 @@ import test from "node:test";
 import { executeThroughGuardian } from "./guardian-gateway";
 import { createAction } from "./core";
 import { createDefaultToolHandlerRegistry } from "./default-tool-handlers";
+import { createToolHandlerRegistry } from "./tool-handler-registry";
 
 test("direct action execution cannot bypass the Guardian Gateway", async () => {
   const { executeActionSafely } = await import("./action-executor");
@@ -36,20 +37,21 @@ test("Guardian Gateway preserves explicit approval for protected shop publishing
   assert.match(result.error ?? "", /handler/i);
 });
 
-test("Guardian Gateway executes a safe action only through its handler", async () => {
+test("Guardian Gateway executes a safe action only through its registered handler", async () => {
   let called = false;
+  const registry = createToolHandlerRegistry();
+  registry.register("search", async () => {
+    called = true;
+    return { result: "verified" };
+  });
+
   const result = await executeThroughGuardian({
     agent: "research",
     capability: "search",
     mode: "read",
     action: createAction("tool", { tool: "search" }),
-    context: {
-      authenticated: true,
-      handler: async () => {
-        called = true;
-        return { result: "verified" };
-      },
-    },
+    context: { authenticated: true },
+    toolRegistry: registry,
   });
   assert.equal(result.ok, true);
   assert.equal(called, true);
