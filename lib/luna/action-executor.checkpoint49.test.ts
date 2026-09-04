@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { createAction } from "./core";
 import { executeActionSafely } from "./action-executor";
 import { ExternalTrustedAuthAdapter } from "./trusted-auth";
+import { ExecutionBudget } from "./execution-budget";
 
 const adapter = new ExternalTrustedAuthAdapter("test-auth");
 const identity = adapter.verifyIdentity({
@@ -19,6 +20,7 @@ const baseContext = {
   authenticated: true,
   userId: "user-1",
   identity,
+  budget: new ExecutionBudget(),
   handler: async () => ({ executed: true }),
 };
 
@@ -71,6 +73,16 @@ test("executor completes only after an authorized handler succeeds", async () =>
   assert.equal(result.ok, true);
   assert.equal(result.action.status, "completed");
   assert.deepEqual(result.output, { searchResults: 1 });
+});
+
+test("executor enforces the shared tool-call budget", async () => {
+  const budget = new ExecutionBudget({ maxToolCalls: 1, maxActions: 2 });
+  const first = await executeActionSafely(createAction("tool", { tool: "search" }), { ...baseContext, budget, gatewayAuthorized: true });
+  const second = await executeActionSafely(createAction("tool", { tool: "search" }), { ...baseContext, budget, gatewayAuthorized: true });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, false);
+  assert.match(second.error ?? "", /tool call limit exceeded/);
 });
 
 test("executor marks handler failures as failed and never reports completion", async () => {
