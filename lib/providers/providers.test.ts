@@ -5,125 +5,31 @@ import { extractSearchResults, HttpAnalyticsProvider, HttpCommerceProvider, Http
 import { createProviderRegistry } from "./registry";
 import { parseAnalyticsRequest, validateAnalyticsResult } from "./analytics-validation";
 
-test("provider registry exposes all five boundaries", () => {
+test("provider registry exposes all six boundaries", () => {
   const registry = createProviderRegistry();
   assert.equal(typeof registry.openai, "function");
   assert.equal(typeof registry.search, "function");
   assert.equal(typeof registry.analytics, "function");
   assert.equal(typeof registry.commerce, "function");
+  assert.equal(typeof registry.mail, "function");
   assert.equal(typeof registry.financial, "function");
 });
 
-test("search adapter fails closed when query is absent", async () => {
-  await assert.rejects(() => new HttpSearchProvider().search({ query: "" }), /SEARCH_QUERY_REQUIRED/);
-});
-
-test("search citation extractor returns unique sources and respects limit", () => {
-  const result = extractSearchResults({ output_text: "Answer from the web.", output: [{ type: "message", content: [{ type: "output_text", annotations: [{ type: "url_citation", url_citation: { title: "Source A", url: "https://a.example" } }, { type: "url_citation", url_citation: { title: "Source A duplicate", url: "https://a.example" } }, { type: "url_citation", url_citation: { title: "Source B", url: "https://b.example" } }] }] }] }, 2);
-  assert.deepEqual(result, [{ title: "Source A", url: "https://a.example", snippet: "Answer from the web." }, { title: "Source B", url: "https://b.example", snippet: "Answer from the web." }]);
-});
-
-test("search citation extractor returns no fabricated source without citations", () => {
-  assert.deepEqual(extractSearchResults({ output_text: "No citations returned.", output: [] }, 5), []);
-});
-
-test("search citation extractor rejects invalid citation URLs", () => {
-  assert.deepEqual(extractSearchResults({ output_text: "Answer.", output: [{ type: "message", content: [{ type: "output_text", annotations: [{ type: "url_citation", url_citation: { title: "Bad", url: "javascript:alert(1)" } }] }] }] }, 5), []);
-});
-
-test("analytics request parser accepts a metric and bounded dimensions", () => {
-  assert.deepEqual(parseAnalyticsRequest({ metric: "sales.revenue", dimensions: { country: "DE", channel: "web" } }), { metric: "sales.revenue", dimensions: { country: "DE", channel: "web" } });
-});
-
-test("analytics request parser rejects malformed input", () => {
-  assert.throws(() => parseAnalyticsRequest({}), /ANALYTICS_INVALID_METRIC/);
-  assert.throws(() => parseAnalyticsRequest({ metric: "sales", dimensions: [] }), /ANALYTICS_INVALID_DIMENSIONS/);
-  assert.throws(() => parseAnalyticsRequest({ metric: "sales", dimensions: { country: 42 } }), /ANALYTICS_INVALID_DIMENSION/);
-});
-
-test("analytics result validator rejects unsafe provider responses", () => {
-  assert.deepEqual(validateAnalyticsResult({ value: 42, unit: "events", source: "test-provider" }), { value: 42, unit: "events", source: "test-provider" });
-  assert.throws(() => validateAnalyticsResult({ value: "42", source: "test-provider" }), /ANALYTICS_INVALID_PROVIDER_RESPONSE/);
-  assert.throws(() => validateAnalyticsResult({ value: 42, source: "" }), /ANALYTICS_INVALID_PROVIDER_RESPONSE/);
-});
-
-test("analytics adapter fails closed when endpoint is absent", async () => {
-  await assert.rejects(() => new HttpAnalyticsProvider(undefined).measure({ metric: "test" }), /ANALYTICS_PROVIDER_URL/);
-});
-
-test("analytics adapter rejects non-http provider endpoints", async () => {
-  await assert.rejects(() => new HttpAnalyticsProvider("javascript:alert(1)").measure({ metric: "test" }), /PROVIDER_INVALID_URL/);
-});
-
-test("commerce adapter fails closed when endpoint is absent", async () => {
-  await assert.rejects(() => new HttpCommerceProvider(undefined).listProducts(), /COMMERCE_PROVIDER_URL/);
-});
-
-test("commerce adapter normalizes provider endpoint before appending routes", async () => {
-  const originalFetch = globalThis.fetch;
-  let capturedUrl = "";
-  globalThis.fetch = async (input) => {
-    capturedUrl = String(input);
-    return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
-  };
-  try {
-    await new HttpCommerceProvider("https://commerce.test/").listProducts("phone");
-    assert.equal(capturedUrl, "https://commerce.test/products/search");
-  } finally { globalThis.fetch = originalFetch; }
-});
-
-test("analytics adapter validates provider response at the adapter boundary", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ value: "42", source: "untrusted" }), { status: 200, headers: { "content-type": "application/json" } });
-  try { await assert.rejects(() => new HttpAnalyticsProvider("https://analytics.test").measure({ metric: "events" }), /ANALYTICS_INVALID_PROVIDER_RESPONSE/); }
-  finally { globalThis.fetch = originalFetch; }
-});
-
-test("commerce list adapter validates provider products at the adapter boundary", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify([{ id: "1", title: "Item", price: -1 }]), { status: 200, headers: { "content-type": "application/json" } });
-  try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").listProducts(), /COMMERCE_INVALID_PRICE/); }
-  finally { globalThis.fetch = originalFetch; }
-});
-
-test("commerce publish adapter validates provider result at the adapter boundary", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ id: "1", published: "yes" }), { status: 200, headers: { "content-type": "application/json" } });
-  try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").publishProduct({ id: "1", title: "Item" }), /COMMERCE_INVALID_RESPONSE/); }
-  finally { globalThis.fetch = originalFetch; }
-});
-
-test("financial adapter cannot move money before explicit integration", async () => {
-  const provider = new DisabledFinancialProvider();
-  await assert.rejects(() => provider.transfer(), /FINANCIAL_TRANSFER_DISABLED/);
-});
-
-test("analytics adapter sends JSON and auth to configured provider", async () => {
-  const originalFetch = globalThis.fetch;
-  let captured: { url: string; body: string; authorization?: string } | undefined;
-  globalThis.fetch = async (input, init) => {
-    captured = { url: String(input), body: String(init?.body), authorization: new Headers(init?.headers).get("authorization") ?? undefined };
-    return new Response(JSON.stringify({ value: 42, unit: "events", source: "test-provider" }), { status: 200, headers: { "content-type": "application/json" } });
-  };
-  try {
-    const result = await new HttpAnalyticsProvider("https://analytics.test", "secret").measure({ metric: "events" });
-    assert.deepEqual(result, { value: 42, unit: "events", source: "test-provider" });
-    assert.equal(captured?.url, "https://analytics.test");
-    assert.equal(captured?.authorization, "Bearer secret");
-    assert.equal(captured?.body, JSON.stringify({ metric: "events" }));
-  } finally { globalThis.fetch = originalFetch; }
-});
-
-test("commerce adapter rejects non-JSON provider responses", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response("not-json", { status: 200, headers: { "content-type": "text/plain" } });
-  try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").listProducts(), /PROVIDER_INVALID_CONTENT_TYPE/); }
-  finally { globalThis.fetch = originalFetch; }
-});
-
-test("provider HTTP adapter fails closed on timeout errors", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => { throw new DOMException("timed out", "TimeoutError"); };
-  try { await assert.rejects(() => new HttpAnalyticsProvider("https://slow.test").measure({ metric: "test" }), /PROVIDER_REQUEST_TIMEOUT/); }
-  finally { globalThis.fetch = originalFetch; }
-});
+test("search adapter fails closed when query is absent", async () => { await assert.rejects(() => new HttpSearchProvider().search({ query: "" }), /SEARCH_QUERY_REQUIRED/); });
+test("search citation extractor returns unique sources and respects limit", () => { const result = extractSearchResults({ output_text: "Answer from the web.", output: [{ type: "message", content: [{ type: "output_text", annotations: [{ type: "url_citation", url_citation: { title: "Source A", url: "https://a.example" } }, { type: "url_citation", url_citation: { title: "Source A duplicate", url: "https://a.example" } }, { type: "url_citation", url_citation: { title: "Source B", url: "https://b.example" } }] }] }] }, 2); assert.deepEqual(result, [{ title: "Source A", url: "https://a.example", snippet: "Answer from the web." }, { title: "Source B", url: "https://b.example", snippet: "Answer from the web." }]); });
+test("search citation extractor returns no fabricated source without citations", () => { assert.deepEqual(extractSearchResults({ output_text: "No citations returned.", output: [] }, 5), []); });
+test("search citation extractor rejects invalid citation URLs", () => { assert.deepEqual(extractSearchResults({ output_text: "Answer.", output: [{ type: "message", content: [{ type: "output_text", annotations: [{ type: "url_citation", url_citation: { title: "Bad", url: "javascript:alert(1)" } }] }] }] }, 5), []); });
+test("analytics request parser accepts a metric and bounded dimensions", () => { assert.deepEqual(parseAnalyticsRequest({ metric: "sales.revenue", dimensions: { country: "DE", channel: "web" } }), { metric: "sales.revenue", dimensions: { country: "DE", channel: "web" } }); });
+test("analytics request parser rejects malformed input", () => { assert.throws(() => parseAnalyticsRequest({}), /ANALYTICS_INVALID_METRIC/); assert.throws(() => parseAnalyticsRequest({ metric: "sales", dimensions: [] }), /ANALYTICS_INVALID_DIMENSIONS/); assert.throws(() => parseAnalyticsRequest({ metric: "sales", dimensions: { country: 42 } }), /ANALYTICS_INVALID_DIMENSION/); });
+test("analytics result validator rejects unsafe provider responses", () => { assert.deepEqual(validateAnalyticsResult({ value: 42, unit: "events", source: "test-provider" }), { value: 42, unit: "events", source: "test-provider" }); assert.throws(() => validateAnalyticsResult({ value: "42", source: "test-provider" }), /ANALYTICS_INVALID_PROVIDER_RESPONSE/); assert.throws(() => validateAnalyticsResult({ value: 42, source: "" }), /ANALYTICS_INVALID_PROVIDER_RESPONSE/); });
+test("analytics adapter fails closed when endpoint is absent", async () => { await assert.rejects(() => new HttpAnalyticsProvider(undefined).measure({ metric: "test" }), /ANALYTICS_PROVIDER_URL/); });
+test("analytics adapter rejects non-http provider endpoints", async () => { await assert.rejects(() => new HttpAnalyticsProvider("javascript:alert(1)").measure({ metric: "test" }), /PROVIDER_INVALID_URL/); });
+test("commerce adapter fails closed when endpoint is absent", async () => { await assert.rejects(() => new HttpCommerceProvider(undefined).listProducts(), /COMMERCE_PROVIDER_URL/); });
+test("commerce adapter normalizes provider endpoint before appending routes", async () => { const originalFetch = globalThis.fetch; let capturedUrl = ""; globalThis.fetch = async (input) => { capturedUrl = String(input); return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } }); }; try { await new HttpCommerceProvider("https://commerce.test/").listProducts("phone"); assert.equal(capturedUrl, "https://commerce.test/products/search"); } finally { globalThis.fetch = originalFetch; } });
+test("analytics adapter validates provider response at the adapter boundary", async () => { const originalFetch = globalThis.fetch; globalThis.fetch = async () => new Response(JSON.stringify({ value: "42", source: "untrusted" }), { status: 200, headers: { "content-type": "application/json" } }); try { await assert.rejects(() => new HttpAnalyticsProvider("https://analytics.test").measure({ metric: "events" }), /ANALYTICS_INVALID_PROVIDER_RESPONSE/); } finally { globalThis.fetch = originalFetch; } });
+test("commerce list adapter validates provider products at the adapter boundary", async () => { const originalFetch = globalThis.fetch; globalThis.fetch = async () => new Response(JSON.stringify([{ id: "1", title: "Item", price: -1 }]), { status: 200, headers: { "content-type": "application/json" } }); try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").listProducts(), /COMMERCE_INVALID_PRICE/); } finally { globalThis.fetch = originalFetch; } });
+test("commerce publish adapter validates provider result at the adapter boundary", async () => { const originalFetch = globalThis.fetch; globalThis.fetch = async () => new Response(JSON.stringify({ id: "1", published: "yes" }), { status: 200, headers: { "content-type": "application/json" } }); try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").publishProduct({ id: "1", title: "Item" }), /COMMERCE_INVALID_RESPONSE/); } finally { globalThis.fetch = originalFetch; } });
+test("financial adapter cannot move money before explicit integration", async () => { const provider = new DisabledFinancialProvider(); await assert.rejects(() => provider.transfer(), /FINANCIAL_TRANSFER_DISABLED/); });
+test("analytics adapter sends JSON and auth to configured provider", async () => { const originalFetch = globalThis.fetch; let captured: { url: string; body: string; authorization?: string } | undefined; globalThis.fetch = async (input, init) => { captured = { url: String(input), body: String(init?.body), authorization: new Headers(init?.headers).get("authorization") ?? undefined }; return new Response(JSON.stringify({ value: 42, unit: "events", source: "test-provider" }), { status: 200, headers: { "content-type": "application/json" } }); }; try { const result = await new HttpAnalyticsProvider("https://analytics.test", "secret").measure({ metric: "events" }); assert.deepEqual(result, { value: 42, unit: "events", source: "test-provider" }); assert.equal(captured?.url, "https://analytics.test"); assert.equal(captured?.authorization, "Bearer secret"); assert.equal(captured?.body, JSON.stringify({ metric: "events" })); } finally { globalThis.fetch = originalFetch; } });
+test("commerce adapter rejects non-JSON provider responses", async () => { const originalFetch = globalThis.fetch; globalThis.fetch = async () => new Response("not-json", { status: 200, headers: { "content-type": "text/plain" } }); try { await assert.rejects(() => new HttpCommerceProvider("https://commerce.test").listProducts(), /PROVIDER_INVALID_CONTENT_TYPE/); } finally { globalThis.fetch = originalFetch; } });
+test("provider HTTP adapter fails closed on timeout errors", async () => { const originalFetch = globalThis.fetch; globalThis.fetch = async () => { throw new DOMException("timed out", "TimeoutError"); }; try { await assert.rejects(() => new HttpAnalyticsProvider("https://slow.test").measure({ metric: "test" }), /PROVIDER_REQUEST_TIMEOUT/); } finally { globalThis.fetch = originalFetch; } });
