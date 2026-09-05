@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "../../../../../../lib/supabase/auth";
-import { createMicrosoftOAuthState, microsoftAuthorizationUrl, microsoftOAuthConfig, microsoftOAuthCookieOptions } from "../../../../../../lib/integrations/microsoft";
+import { requireUser } from "../../../../../lib/supabase/auth";
+import { createMicrosoftOAuthState, microsoftAuthorizationUrl, microsoftOAuthConfig, microsoftOAuthCookieOptions } from "../../../../../lib/integrations/microsoft";
 
 export async function GET(request: Request) {
   try {
