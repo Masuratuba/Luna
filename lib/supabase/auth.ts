@@ -8,7 +8,7 @@ function secretsMatch(provided: string, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-const USER_SCOPES = ["search:read", "memory:read", "memory:write", "task:create"];
+const USER_SCOPES = ["search:read", "memory:read", "memory:write", "task:create", "mail.read", "mail.send"];
 
 export async function requireUser(request?: Request): Promise<{
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> extends infer T ? NonNullable<T> : never;
@@ -26,15 +26,7 @@ export async function requireUser(request?: Request): Promise<{
     if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
     const now = Date.now();
     const issuer = process.env.LUNA_TRUSTED_AUTH_ISSUER?.trim() || "luna-owner-secret";
-    const assertion = {
-      subject: ownerUserId,
-      role: "admin" as const,
-      issuer,
-      issuedAt: now,
-      expiresAt: now + 5 * 60 * 1000,
-      nonce: randomUUID(),
-      scopes: ["luna:*"] as string[],
-    };
+    const assertion = { subject: ownerUserId, role: "admin" as const, issuer, issuedAt: now, expiresAt: now + 5 * 60 * 1000, nonce: randomUUID(), scopes: ["luna:*"] as string[] };
     const trustedAdmin = new ExternalTrustedAuthAdapter(issuer).verify(assertion);
     if (!trustedAdmin) throw new Error("OWNER_AUTH_INVALID");
     return { supabase, user: { id: ownerUserId }, role: "admin", trustedAdmin, identity: trustedAdmin };
@@ -47,15 +39,7 @@ export async function requireUser(request?: Request): Promise<{
 
   const now = Date.now();
   const issuer = process.env.LUNA_TRUSTED_AUTH_ISSUER?.trim() || "supabase";
-  const assertion = {
-    subject: data.user.id,
-    role: "user" as const,
-    issuer,
-    issuedAt: now,
-    expiresAt: now + 5 * 60 * 1000,
-    nonce: randomUUID(),
-    scopes: USER_SCOPES,
-  };
+  const assertion = { subject: data.user.id, role: "user" as const, issuer, issuedAt: now, expiresAt: now + 5 * 60 * 1000, nonce: randomUUID(), scopes: USER_SCOPES };
   const identity = new ExternalTrustedAuthAdapter(issuer).verifyIdentity(assertion);
   if (!identity) throw new Error("AUTH_IDENTITY_INVALID");
   return { supabase, user: { id: data.user.id }, role: "user", identity };
