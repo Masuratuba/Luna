@@ -36,7 +36,7 @@ function decrypt(value: string): string {
 }
 
 function signState(value: string): string {
-  return createHmac("sha256", env("LUNA_OWNER_SECRET")).update(value).digest("base64url");
+  return createHmac("sha256", encryptionKey()).update(value).digest("base64url");
 }
 
 export function createMicrosoftOAuthState(): { value: string; cookieValue: string } {
@@ -125,7 +125,7 @@ export async function saveMicrosoftConnection(userId: string, token: TokenRespon
 export async function getMicrosoftGraphAccessToken(userId: string): Promise<string> {
   const supabase = createSupabaseServiceClient();
   if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
-  const { data, error } = await supabase.from("microsoft_connections").select("access_token_encrypted,refresh_token_encrypted,access_token_expires_at").eq("user_id", userId).maybeSingle();
+  const { data, error } = await supabase.from("microsoft_connections").select("access_token_encrypted,refresh_token_encrypted,access_token_expires_at").eq("user_id", userId).eq("provider", "microsoft-graph").maybeSingle();
   if (error) throw new Error("MICROSOFT_CONNECTION_READ_FAILED");
   if (!data) throw new Error("MICROSOFT_NOT_CONNECTED");
   if (new Date(data.access_token_expires_at).getTime() > Date.now() + 60_000) return decrypt(data.access_token_encrypted);
