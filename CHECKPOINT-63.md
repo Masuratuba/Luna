@@ -10,4 +10,4 @@ Status: implemented with explicit safety gates.
 - Provider errors fail closed; no send is attempted without the required authorization state.
 - No real email was sent during repository verification; tests use a mocked fetch boundary.
 
-Required Microsoft Graph permission: `Mail.Send`. Microsoft documents `POST /me/sendMail` as the least-privileged send operation for delegated and application scenarios. citeturn1search0turn1search3
+Required Microsoft Graph permission: `Mail.Send`.
