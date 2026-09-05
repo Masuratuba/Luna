@@ -12,27 +12,12 @@ export function dispatchAgent(task: AgentTask): AgentDispatch {
   return { ...task, approved: !approvalRequired, reason: approvalRequired ? "Approval required before execution" : `Dispatched to ${agent.name}` };
 }
 
-/**
- * Capability-gated dispatch. Agent selection alone never grants tool access.
- * The capability allow-list is checked before a task can be approved for execution.
- */
-export function dispatchWithCapability(
-  task: AgentTask,
-  capability: string,
-  mode: AgentAccessMode = "read",
-): AgentDispatch {
+export function dispatchWithCapability(task: AgentTask, capability: string, mode: AgentAccessMode = "read"): AgentDispatch {
   const base = dispatchAgent(task);
   if (!base.approved) return base;
-
   const access = getAgentAccess(task.agent, capability, mode);
-  if (!access.allowed) {
-    return { ...base, approved: false, reason: access.reason };
-  }
-
-  if (access.requiresApproval) {
-    return { ...base, approved: false, reason: "Capability is allowed but requires explicit approval" };
-  }
-
+  if (!access.allowed) return { ...base, approved: false, reason: access.reason };
+  if (access.requiresApproval) return { ...base, approved: false, reason: "Capability is allowed but requires explicit approval" };
   return { ...base, approved: true, reason: `Capability ${capability} granted (${mode})` };
 }
 
@@ -54,11 +39,21 @@ export function isShopTask(message: string): boolean {
   return /\b(shop|store|produkt|products?|preis|pricing|verkauf|verkaufen|e-?commerce|catalog|katalog)\b/i.test(message);
 }
 
+export function isMailTask(message: string): boolean {
+  return /\b(mail|email|e-?mail|postfach|inbox|nachrichten?)\b/i.test(message);
+}
+
+export function isMailSendTask(message: string): boolean {
+  return isMailTask(message) && /\b(sende|send|verschick|schreib|beantworte|reply|antwort|mailen)\b/i.test(message);
+}
+
 export function agentForTask(message: string): LunaAgentId {
   return isShopTask(message) ? "shop" : "luna";
 }
 
-/** Shop routing has priority over generic decision routing. */
 export function selectAgent(message: string, decision: LunaDecision): LunaAgentId {
-  return isShopTask(message) ? "shop" : agentForDecision(decision);
+  if (isShopTask(message)) return "shop";
+  if (isMailSendTask(message)) return "action";
+  if (isMailTask(message) && decision === "USE_TOOL") return "research";
+  return agentForDecision(decision);
 }
