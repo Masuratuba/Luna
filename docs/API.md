@@ -12,6 +12,16 @@ Returns service health and version.
 ### GET /auth/callback
 Exchanges the Supabase email-login code for a browser session and redirects to the requested safe local path.
 
+## Microsoft integration
+
+### GET /api/integrations/microsoft/start
+Starts the Microsoft identity-platform authorization-code flow for the authenticated LUNA user. The route creates a signed, short-lived state cookie and requests delegated `User.Read`, `Mail.Read`, `Mail.Send` and `offline_access` scopes.
+
+### GET /api/integrations/microsoft/callback
+Validates the OAuth state, exchanges the authorization code server-side, verifies the Microsoft Graph `/me` identity, and stores encrypted access/refresh tokens in the user-scoped `microsoft_connections` table.
+
+Microsoft access tokens are refreshed server-side when they expire. Tokens are never accepted from the browser request body.
+
 ## Chat
 
 ### POST /api/chat
@@ -37,6 +47,11 @@ Returns one owned conversation and its messages.
 
 ### DELETE /api/conversations/:id
 Deletes one owned conversation and its messages through the database cascade.
+
+## Mail
+
+### POST /api/mail
+Supports `search`, `read`, and `send`. Mail read operations use the authenticated user's Microsoft connection; sending additionally requires explicit approval and a confirmation token and remains behind the Guardian/action boundary.
 
 ## Memory
 
