@@ -13,6 +13,7 @@ button, input, textarea { font: inherit; }
 .luna-integrations { margin: 0 auto 14px; }
 .luna-microsoft-connect { display: inline-block; padding: 8px 16px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.06); text-decoration: none; font-size: 13px; }
 .luna-microsoft-connect:hover { background: rgba(255,255,255,.1); }
+.luna-microsoft-connect.connected { border-color: rgba(70,211,105,.32); color: rgba(255,255,255,.9); }
 .luna-chat { width: min(680px, 100%); height: min(680px, 70vh); min-height: 430px; margin: auto; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.16); border-radius: 28px; background: rgba(5,7,11,.48); backdrop-filter: blur(14px); box-shadow: 0 24px 90px rgba(0,0,0,.45); overflow: hidden; text-align: left; }
 .luna-chat-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid rgba(255,255,255,.1); }
 .luna-chat-header strong { font-size: 18px; }
