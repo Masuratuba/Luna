@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "../../../../../lib/supabase/auth";
-import { createMicrosoftOAuthState, microsoftAuthorizationUrl, microsoftOAuthConfig, microsoftOAuthCookieOptions } from "../../../../../lib/integrations/microsoft";
+import { createMicrosoftOAuthState, microsoftAuthorizationUrl, microsoftOAuthConfig, microsoftOAuthCookieOptions, microsoftRedirectUri } from "../../../../../lib/integrations/microsoft";
 
 export async function GET(request: Request) {
   try {
     await requireUser(request);
     const { value, cookieValue } = createMicrosoftOAuthState();
-    const response = NextResponse.redirect(microsoftAuthorizationUrl(value));
+    const redirectUri = microsoftRedirectUri(new URL(request.url).origin);
+    const response = NextResponse.redirect(microsoftAuthorizationUrl(value, redirectUri));
     response.cookies.set(microsoftOAuthConfig.stateCookie, cookieValue, microsoftOAuthCookieOptions());
     return response;
   } catch (error: unknown) {
