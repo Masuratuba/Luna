@@ -1,4 +1,4 @@
-import { containsSensitiveMemory, normalizeMemory, selectRelevantMemories, type MemoryType } from "./memory";
+import { containsSensitiveMemory, normalizeMemory } from "./memory";
 
 export type LunaCommand =
   | { kind: "forget"; query: string }
@@ -8,8 +8,6 @@ export type LunaCommand =
   | { kind: "next" }
   | { kind: "continue" }
   | { kind: "think" };
-
-const MEMORY_TYPES = new Set<MemoryType>(["personal", "preference", "project", "decision", "fact", "instruction"]);
 
 export function parseLunaCommand(message: string): LunaCommand | null {
   const text = message.trim();
@@ -21,12 +19,8 @@ export function parseLunaCommand(message: string): LunaCommand | null {
   if (/^luna[, ]+prüf(?:e)?\s+(?:das|dies|dass?)?/i.test(text)) return { kind: "verify", target: text.replace(/^luna[, ]+prüf(?:e)?\s+/i, "").trim() || "aktuellen Zustand" };
   if (/^luna[, ]+was jetzt\??$/i.test(text)) return { kind: "next" };
   if (/^luna[, ]+mach weiter\s*$/i.test(text)) return { kind: "continue" };
-  if (/^luna[, ]+denk(?:e)? selbst\s*$/i.test(text)) return { kind: "think" };
+  if (/^luna[, ]+denk(?:e)?\s+(?:selbst|weiter)\s*$/i.test(text)) return { kind: "think" };
   return null;
-}
-
-function asObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 export async function executeLunaCommand(command: LunaCommand, supabase: any, userId: string) {
