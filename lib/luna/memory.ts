@@ -30,7 +30,7 @@ export function containsSensitiveMemory(message: string): boolean {
 export function extractExplicitMemory(message: string): string | null {
   if (!shouldRemember(message) || containsSensitiveMemory(message)) return null;
   const content = message
-    .replace(/^\s*(bitte\s+)?(merke(?:\s+dir)?|merk\s+dir|speicher(?:e)?|vergiss\s+nicht)\s*[:,-]?\s*/i, "")
+    .replace(/^\s*(?:luna[,!:]?\s*)?(?:bitte\s+)?(?:merke(?:\s+dir)?|merk\s+dir|speicher(?:e)?|vergiss\s+nicht)\s*[:,-]?\s*/i, "")
     .trim();
   return content ? content.slice(0, 10000) : null;
 }
@@ -40,7 +40,7 @@ export function normalizeMemory(candidate: MemoryCandidate): MemoryCandidate {
   return {
     type: candidate.type,
     content,
-    importance: Math.min(1, Math.max(0, candidate.importance)),
+    importance: Math.min(1, Math.max(0, Number.isFinite(candidate.importance) ? candidate.importance : 0.5)),
   };
 }
 
@@ -50,11 +50,11 @@ export function memoryFingerprint(type: MemoryType, content: string): string {
 
 export function selectRelevantMemories(memories: Memory[], query: string, limit = 12): Memory[] {
   const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
-  const terms = query.toLowerCase().split(/\s+/).filter((term) => term.length > 2);
+  const terms = query.toLocaleLowerCase("de-DE").split(/\s+/).filter((term) => term.length > 2);
   return [...memories]
     .map((memory) => ({
       memory,
-      score: terms.reduce((score, term) => score + (memory.content.toLowerCase().includes(term) ? 1 : 0), 0),
+      score: terms.reduce((score, term) => score + (memory.content.toLocaleLowerCase("de-DE").includes(term) ? 1 : 0), 0),
     }))
     .sort((a, b) => b.score - a.score || b.memory.importance - a.memory.importance)
     .slice(0, safeLimit)
