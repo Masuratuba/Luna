@@ -9,6 +9,18 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: microsoftConnection } = await supabase
+    .from("microsoft_connections")
+    .select("account_email")
+    .eq("user_id", user.id)
+    .eq("provider", "microsoft-graph")
+    .maybeSingle();
+
+  const microsoftConnected = Boolean(microsoftConnection);
+  const microsoftLabel = microsoftConnected
+    ? `Microsoft verbunden${microsoftConnection.account_email ? ` · ${microsoftConnection.account_email}` : ""}`
+    : "Microsoft verbinden";
+
   return (
     <main className="luna-shell">
       <div className="luna-background" aria-hidden="true" />
@@ -17,8 +29,8 @@ export default async function Home() {
         <header className="luna-brand">🌙 LUNA</header>
         <p className="luna-status"><span /> Bereit</p>
         <div className="luna-integrations">
-          <a className="luna-microsoft-connect" href="/api/integrations/microsoft/start">
-            Microsoft verbinden
+          <a className={`luna-microsoft-connect${microsoftConnected ? " connected" : ""}`} href="/api/integrations/microsoft/start">
+            {microsoftLabel}
           </a>
         </div>
         <LunaChatSecure />
