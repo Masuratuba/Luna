@@ -16,6 +16,11 @@ export default async function Home() {
       <section className="luna-content">
         <header className="luna-brand">🌙 LUNA</header>
         <p className="luna-status"><span /> Bereit</p>
+        <div className="luna-integrations">
+          <a className="luna-microsoft-connect" href="/api/integrations/microsoft/start">
+            Microsoft verbinden
+          </a>
+        </div>
         <LunaChatSecure />
       </section>
     </main>
