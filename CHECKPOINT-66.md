@@ -17,6 +17,7 @@ Branch: `main`
 - Integrated Luna command capabilities directly into `/api/chat`.
 - Memory retrieval uses relevance selection rather than only importance ordering.
 - Explicit memory extraction rejects sensitive credentials and supports user-controlled memory operations.
+- Added support and regression coverage for both `Luna, denk selbst` and `Luna, denk weiter`.
 
 ## Command capabilities
 
@@ -27,25 +28,27 @@ Branch: `main`
 - `Luna, was jetzt?`
 - `Luna, mach weiter`
 - `Luna, denk selbst`
+- `Luna, denk weiter`
 
 ## Verification
 
-- Previous main commit: `a63be5cc5b455c64b2e00dc73b7965a77e8018c5`.
-- GitHub Actions CI run 241 for that commit passed completely:
+- Current code commit before this documentation update: `7e6f0e6c85b638ad0694eee4590c5ee912b986b9`.
+- GitHub Actions CI run 244 for that code passed completely:
   - TypeScript
   - ESLint
   - Tests
   - Production build
-- Live Supabase verification was completed manually in the Supabase SQL Editor.
+- Live Supabase verification was completed manually in the Supabase SQL Editor:
+  - 3 required runtime tables present
+  - 3 owner RLS policies present
+  - authenticated-role privileges verified
 - No Slack integration is part of this project.
 
-## Final verification for this checkpoint
+## Final status
 
-- The checkpoint file was updated only after the live database verification was completed.
-- The checkpoint commit itself must pass the GitHub CI pipeline before Checkpoint 66 is marked fully CI-verified.
+Checkpoint 66 is functionally complete. The final documentation commit must pass the same GitHub CI pipeline before the checkpoint is marked fully CI-verified.
 
 ## Next
 
-- Verify CI for this checkpoint commit.
-- Verify the resulting production deployment/status if available.
-- If both are green, mark Checkpoint 66 fully verified.
+- Confirm CI for the final checkpoint documentation commit.
+- Then continue with the next production-hardening phase.
