@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     if (!guard.allowed) return NextResponse.json({ ok: false, blocked: true, risk: guard.risk, error: guard.reason }, { status: 403 });
 
     const history = [...(recentMessages ?? [])].reverse();
-    const relevantMemories = selectRelevantMemories(memories ?? [], message, 12);
+    const relevantMemories = selectRelevantMemories((memories ?? []) as any, message, 12);
     const memoryContext = relevantMemories.map((memory) => `[${memory.type}] ${memory.content}`).join("\n");
     const actionDecision = core.decision === "CREATE_TASK" || core.decision === "SAVE_MEMORY" || core.decision === "USE_TOOL";
     let actionResult: ActionResult | null = null;
@@ -105,7 +105,6 @@ export async function POST(request: Request) {
       await createPendingAction(supabase, user.id, action, core.agent);
       const explicitMemory = extractExplicitMemory(message);
       const capability = core.decision === "CREATE_TASK" ? "task.create" : core.decision === "SAVE_MEMORY" ? "memory.write" : "search";
-
       const result = await executeThroughGuardian({
         agent: core.agent,
         capability,
@@ -138,7 +137,6 @@ export async function POST(request: Request) {
           },
         },
       });
-
       actionResult = result.execution ?? { ok: false, error: result.error ?? result.guard.reason };
       await persistAction(supabase, user.id, action, actionResult, guard.risk);
       if (!actionResult.ok) {
@@ -146,7 +144,6 @@ export async function POST(request: Request) {
         await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: failedReply });
         return NextResponse.json({ ok: false, conversationId, decision: core.decision, agent: core.agent, actionId, actionStatus: "failed", error: failedReply }, { status: result.guard.decision === "REQUIRE_APPROVAL" ? 403 : 502 });
       }
-
       if (core.decision === "SAVE_MEMORY") memorySaved = true;
       if (core.decision === "USE_TOOL") {
         const results = Array.isArray(actionResult.output?.results) ? actionResult.output.results as Array<{ title: string; url: string; snippet?: string }> : [];
@@ -160,11 +157,9 @@ export async function POST(request: Request) {
     const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? "completed" : "not applicable"}\nEpistemic state: ${intelligence.epistemic}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nIntelligence guidance:\n${learningContext}\n${followUpContext}\n\nTruth rules:\n${intelligence.truthRules.map((rule) => `- ${rule}`).join("\n")}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is completed, acknowledge the actual completed operation. Do not claim an action was completed unless the execution status says completed.${searchContext}`;
     const response = await getOpenAI().responses.create({ model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna", instructions, store: false, input: history.map((item) => ({ role: item.role, content: item.content })) });
     const reply = response.output_text || "Ich konnte gerade keine Antwort erzeugen.";
-
     const { error: assistantMessageError } = await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: reply });
     if (assistantMessageError) throw assistantMessageError;
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
-
     return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, intelligence: { epistemic: intelligence.epistemic, learningSignals: intelligence.learningSignals.length, followUpRelevant: intelligence.followUp.relevant }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
