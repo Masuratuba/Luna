@@ -1,15 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { parseLunaCommand } from "./command-capabilities";
 
 describe("Luna command capabilities", () => {
-  it("parses forget", () => expect(parseLunaCommand("Luna, vergiss meine alte Präferenz")).toEqual({ kind: "forget", query: "meine alte Präferenz" }));
-  it("parses update", () => expect(parseLunaCommand("Luna, aktualisiere mein Ziel zu Tuba fertigstellen")).toEqual({ kind: "update", query: "mein Ziel", replacement: "Tuba fertigstellen" }));
-  it("parses context", () => expect(parseLunaCommand("Luna, Kontext")).toEqual({ kind: "context" }));
-  it("parses verify", () => expect(parseLunaCommand("Luna, prüf das")).toEqual({ kind: "verify", target: "das" }));
+  it("parses forget", () => assert.deepEqual(parseLunaCommand("Luna, vergiss meine alte Präferenz"), { kind: "forget", query: "meine alte Präferenz" }));
+  it("parses update", () => assert.deepEqual(parseLunaCommand("Luna, aktualisiere mein Ziel zu Tuba fertigstellen"), { kind: "update", query: "mein Ziel", replacement: "Tuba fertigstellen" }));
+  it("parses context", () => assert.deepEqual(parseLunaCommand("Luna, Kontext"), { kind: "context" }));
+  it("parses verify", () => assert.deepEqual(parseLunaCommand("Luna, prüf das"), { kind: "verify", target: "das" }));
   it("parses next, continue and think", () => {
-    expect(parseLunaCommand("Luna, was jetzt?")).toEqual({ kind: "next" });
-    expect(parseLunaCommand("Luna, mach weiter")).toEqual({ kind: "continue" });
-    expect(parseLunaCommand("Luna, denk selbst")).toEqual({ kind: "think" });
+    assert.deepEqual(parseLunaCommand("Luna, was jetzt?"), { kind: "next" });
+    assert.deepEqual(parseLunaCommand("Luna, mach weiter"), { kind: "continue" });
+    assert.deepEqual(parseLunaCommand("Luna, denk selbst"), { kind: "think" });
   });
-  it("does not capture ordinary chat", () => expect(parseLunaCommand("Wie geht es dir?")).toBeNull());
+  it("does not capture ordinary chat", () => assert.equal(parseLunaCommand("Wie geht es dir?"), null));
 });
