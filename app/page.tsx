@@ -18,7 +18,7 @@ export default async function Home() {
 
   const microsoftConnected = Boolean(microsoftConnection);
   const microsoftLabel = microsoftConnected
-    ? `Microsoft verbunden${microsoftConnection.account_email ? ` · ${microsoftConnection.account_email}` : ""}`
+    ? `Microsoft verbunden${microsoftConnection?.account_email ? ` · ${microsoftConnection.account_email}` : ""}`
     : "Microsoft verbinden";
 
   return (
