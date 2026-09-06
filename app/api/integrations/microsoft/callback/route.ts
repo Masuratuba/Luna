@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requireUser } from "../../../../../lib/supabase/auth";
-import { exchangeMicrosoftCode, microsoftOAuthConfig, saveMicrosoftConnection, verifyMicrosoftOAuthState } from "../../../../../lib/integrations/microsoft";
+import { exchangeMicrosoftCode, microsoftOAuthConfig, microsoftRedirectUri, saveMicrosoftConnection, verifyMicrosoftOAuthState } from "../../../../../lib/integrations/microsoft";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -17,7 +17,8 @@ export async function GET(request: Request) {
     if (!verifyMicrosoftOAuthState(state, stateCookie)) return NextResponse.redirect(new URL("/?microsoft=invalid_state", url.origin));
 
     const { user } = await requireUser(request);
-    const token = await exchangeMicrosoftCode(code);
+    const redirectUri = microsoftRedirectUri(url.origin);
+    const token = await exchangeMicrosoftCode(code, redirectUri);
     await saveMicrosoftConnection(user.id, token);
 
     const response = NextResponse.redirect(new URL("/?microsoft=connected", url.origin));
