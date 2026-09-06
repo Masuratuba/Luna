@@ -28,6 +28,27 @@ export default function LoginPage() {
     }
   }
 
+  async function signInWithMicrosoft() {
+    if (loading) return;
+    setLoading(true);
+    setStatus("");
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "azure",
+        options: {
+          scopes: "email offline_access",
+          redirectTo: `${window.location.origin}/auth/callback?next=/`,
+        },
+      });
+      if (error) setStatus(error.message);
+    } catch {
+      setStatus("Microsoft-Anmeldung konnte nicht gestartet werden.");
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="luna-shell">
       <div className="luna-background" aria-hidden="true" />
@@ -37,6 +58,13 @@ export default function LoginPage() {
         <div className="luna-panel">
           <h1>Anmelden</h1>
           <p>Deine LUNA-Daten bleiben deinem Konto zugeordnet.</p>
+
+          <button className="luna-microsoft" type="button" onClick={signInWithMicrosoft} disabled={loading}>
+            {loading ? "…" : "Mit Microsoft anmelden"}
+          </button>
+
+          <div className="luna-divider"><span>oder per E-Mail</span></div>
+
           <form className="luna-input" onSubmit={sendMagicLink}>
             <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-Mail-Adresse" required autoComplete="email" />
             <button type="submit" disabled={loading}>{loading ? "…" : "→"}</button>
