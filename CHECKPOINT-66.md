@@ -1,4 +1,4 @@
-# CHECKPOINT 66 — Runtime Persistence Reconciliation
+# CHECKPOINT 66 — LUNA Production Integration Verification
 
 Date: 2026-09-06
 Repository: `Masuratuba/Luna`
@@ -6,27 +6,46 @@ Branch: `main`
 
 ## Completed
 
-- Added an idempotent Supabase reconciliation migration:
-  - `supabase/migrations/20260906210000_runtime_persistence_reconcile.sql`
-- The migration creates the runtime persistence tables when they are missing:
-  - `luna_actions`
-  - `luna_events`
-  - `luna_audit_log`
-- Added indexes, RLS, owner policies, and authenticated-role grants required by the existing chat action/audit flow.
-- The migration is safe to apply to an environment where the original action/event migration already ran because it uses `create table if not exists` and recreates the policies deterministically.
+- Live Supabase action/event/audit persistence was applied successfully.
+- Verified in the live database that these tables exist:
+  - `public.luna_actions`
+  - `public.luna_events`
+  - `public.luna_audit_log`
+- Verified live RLS owner policies exist for all three tables.
+- Verified the `authenticated` database role has the required table privileges for all three tables.
+- Reconciled the action/event/audit migration so it is idempotent and safe to re-run.
+- Integrated Luna command capabilities directly into `/api/chat`.
+- Memory retrieval uses relevance selection rather than only importance ordering.
+- Explicit memory extraction rejects sensitive credentials and supports user-controlled memory operations.
 
-## Why this checkpoint matters
+## Command capabilities
 
-Production chat was previously working for normal conversations, while the live database was missing `luna_actions`. That meant action-backed paths (task creation, explicit memory save, and search) could fail when they attempted to persist action state. This checkpoint closes that schema gap without weakening the Guardian/audit architecture.
+- `Luna, vergiss ...`
+- `Luna, aktualisiere ...`
+- `Luna, Kontext`
+- `Luna, prüf ...`
+- `Luna, was jetzt?`
+- `Luna, mach weiter`
+- `Luna, denk selbst`
 
-## Verification status
+## Verification
 
-- Repository write completed successfully at commit:
-  `c8a52f9a833bc91f6bce1635f0ae4b07a2018230`
-- The new migration still needs to be applied to the live Supabase database before action-backed production flows can be considered fully verified.
-- No claim is made here that Supabase production has already received the migration.
-- No CI success is claimed for this commit unless a later status check confirms it.
+- Previous main commit: `a63be5cc5b455c64b2e00dc73b7965a77e8018c5`.
+- GitHub Actions CI run 241 for that commit passed completely:
+  - TypeScript
+  - ESLint
+  - Tests
+  - Production build
+- Live Supabase verification was completed manually in the Supabase SQL Editor.
+- No Slack integration is part of this project.
 
-## Next step
+## Final verification for this checkpoint
 
-Apply the migration in the live Supabase SQL Editor, then verify task creation, explicit memory saving, and search through the production Luna UI. After that, continue with Memory retrieval relevance and the next production-hardening checkpoint.
+- The checkpoint file was updated only after the live database verification was completed.
+- The checkpoint commit itself must pass the GitHub CI pipeline before Checkpoint 66 is marked fully CI-verified.
+
+## Next
+
+- Verify CI for this checkpoint commit.
+- Verify the resulting production deployment/status if available.
+- If both are green, mark Checkpoint 66 fully verified.
