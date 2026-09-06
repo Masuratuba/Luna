@@ -37,9 +37,18 @@ alter table public.luna_actions enable row level security;
 alter table public.luna_events enable row level security;
 alter table public.luna_audit_log enable row level security;
 
-create policy if not exists "luna_actions_owner" on public.luna_actions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy if not exists "luna_events_owner" on public.luna_events for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy if not exists "luna_audit_owner" on public.luna_audit_log for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'luna_actions' and policyname = 'luna_actions_owner') then
+    create policy "luna_actions_owner" on public.luna_actions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'luna_events' and policyname = 'luna_events_owner') then
+    create policy "luna_events_owner" on public.luna_events for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'luna_audit_log' and policyname = 'luna_audit_owner') then
+    create policy "luna_audit_owner" on public.luna_audit_log for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  end if;
+end $$;
 
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.luna_actions to authenticated;
