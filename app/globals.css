@@ -25,6 +25,10 @@ button, input, textarea { font: inherit; }
 .luna-input input::placeholder { color: rgba(255,255,255,.52); }
 .luna-input button { width: 46px; height: 46px; border: 0; border-radius: 50%; color: white; background: #20a854; cursor: pointer; }
 .luna-input button:disabled { opacity: .35; cursor: default; }
+.luna-microsoft { width: 100%; min-height: 52px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: #fff; background: rgba(255,255,255,.09); cursor: pointer; font-weight: 700; }
+.luna-microsoft:disabled { opacity: .5; cursor: default; }
+.luna-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0 0; color: rgba(255,255,255,.5); font-size: 13px; }
+.luna-divider::before, .luna-divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.12); }
 
 @media (max-width: 600px) {
   .luna-content { width: 94vw; padding: 24px 0 18px; }
