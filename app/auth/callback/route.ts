@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 
+function safeNext(value: string | null): string {
+  if (!value) return "/";
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/";
+  return value;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") || "/";
+  const next = safeNext(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=missing_code", url.origin));
@@ -26,7 +32,5 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.redirect(
-    new URL(next.startsWith("/") ? next : "/", url.origin),
-  );
+  return NextResponse.redirect(new URL(next, url.origin));
 }
