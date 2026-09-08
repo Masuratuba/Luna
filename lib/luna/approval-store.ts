@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createSupabaseServiceClient } from "../supabase/server";
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
@@ -7,22 +7,22 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function approvalClient() {
+  const client = createSupabaseServiceClient();
+  if (!client) throw new Error("SUPABASE_NOT_CONFIGURED");
+  return client;
+}
+
 export function approvalActionKey(action: string, payload: unknown): string {
   const normalized = JSON.stringify(payload, Object.keys((payload && typeof payload === "object" && !Array.isArray(payload)) ? payload as Record<string, unknown> : {}).sort());
   return `${action}:${hashToken(normalized ?? "")}`;
 }
 
-export async function createDurableApproval(
-  supabase: SupabaseClient,
-  userId: string,
-  actionKey: string,
-  reason: string,
-  ttlMs = DEFAULT_TTL_MS,
-) {
+export async function createDurableApproval(userId: string, actionKey: string, reason: string, ttlMs = DEFAULT_TTL_MS) {
   if (!Number.isFinite(ttlMs) || ttlMs <= 0 || ttlMs > 15 * 60 * 1000) throw new Error("APPROVAL_TTL_INVALID");
   const token = randomUUID();
   const now = Date.now();
-  const { data, error } = await supabase.from("luna_approvals").insert({
+  const { data, error } = await approvalClient().from("luna_approvals").insert({
     user_id: userId,
     action_key: actionKey,
     reason: reason.trim().slice(0, 1000),
@@ -34,14 +34,9 @@ export async function createDurableApproval(
   return { ...data, token };
 }
 
-export async function approveDurableApproval(
-  supabase: SupabaseClient,
-  userId: string,
-  id: string,
-  token: string,
-) {
+export async function approveDurableApproval(userId: string, id: string, token: string) {
   const now = new Date().toISOString();
-  const { data, error } = await supabase.from("luna_approvals")
+  const { data, error } = await approvalClient().from("luna_approvals")
     .update({ status: "approved", approved_at: now })
     .eq("id", id)
     .eq("user_id", userId)
@@ -55,15 +50,9 @@ export async function approveDurableApproval(
   return data;
 }
 
-export async function consumeDurableApproval(
-  supabase: SupabaseClient,
-  userId: string,
-  id: string,
-  token: string,
-  actionKey: string,
-) {
+export async function consumeDurableApproval(userId: string, id: string, token: string, actionKey: string) {
   const now = new Date().toISOString();
-  const { data, error } = await supabase.from("luna_approvals")
+  const { data, error } = await approvalClient().from("luna_approvals")
     .update({ status: "consumed", consumed_at: now })
     .eq("id", id)
     .eq("user_id", userId)
