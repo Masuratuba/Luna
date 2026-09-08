@@ -26,8 +26,10 @@ export async function POST(request: Request) {
     if (operation === "search") {
       const query = typeof body.query === "string" ? body.query.trim() : "";
       if (!query || query.length > MAX_QUERY) return NextResponse.json({ error: "valid query is required" }, { status: 400 });
-      const action = createAction("tool", { tool: "mail.read", operation, query, limit: body.limit, folder: body.folder });
-      const result = await executeThroughGuardian({ agent: "research", capability: "mail.read", mode: "read", action, context: { authenticated: true, userId: user.id, role, trustedAdmin, identity, budget, handler: async () => ({ messages: await provider.search({ query, limit: body.limit, folder: body.folder }) }) } });
+      const folder = typeof body.folder === "string" ? body.folder.trim().toLowerCase() : "inbox";
+      if (folder !== "inbox" && folder !== "sent") return NextResponse.json({ error: "folder must be inbox or sent" }, { status: 400 });
+      const action = createAction("tool", { tool: "mail.read", operation, query, limit: body.limit, folder });
+      const result = await executeThroughGuardian({ agent: "research", capability: "mail.read", mode: "read", action, context: { authenticated: true, userId: user.id, role, trustedAdmin, identity, budget, handler: async () => ({ messages: await provider.search({ query, limit: body.limit, folder }) }) } });
       if (!result.ok) return NextResponse.json({ ok: false, error: result.error ?? result.guard.reason }, { status: 403 });
       return NextResponse.json({ ok: true, messages: result.execution?.output?.messages ?? [] });
     }
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
       if (error.message === "OWNER_AUTH_INVALID") return NextResponse.json({ error: "owner authentication is invalid" }, { status: 503 });
       if (error.message === "AUTH_IDENTITY_INVALID") return NextResponse.json({ error: "authenticated identity is invalid" }, { status: 503 });
       if (error.message === "MICROSOFT_NOT_CONNECTED") return NextResponse.json({ error: "Microsoft account is not connected" }, { status: 409 });
+      if (error.message === "MAIL_FOLDER_INVALID") return NextResponse.json({ error: "folder must be inbox or sent" }, { status: 400 });
     }
     console.error("Luna mail error", error);
     return NextResponse.json({ error: "LUNA MAIL API-Fehler" }, { status: 500 });
