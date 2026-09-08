@@ -49,6 +49,17 @@ test("Guard allows authenticated read-only research requests", () => {
   assert.equal(result.decision, "ALLOW");
 });
 
+test("Guard allows authenticated explicit memory capture", () => {
+  const result = evaluateGuard({
+    userId: "user-1",
+    message: "Merk dir: Ich arbeite an Luna.",
+    decision: "SAVE_MEMORY",
+  });
+  assert.equal(result.allowed, true);
+  assert.equal(result.risk, "PROTECTED");
+  assert.equal(result.decision, "ALLOW");
+});
+
 test("Guard still blocks protected task requests without approval", () => {
   const result = evaluateGuard({
     userId: "user-1",
