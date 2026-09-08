@@ -1,6 +1,7 @@
--- LUNA 0.1 database schema
+-- LUNA 0.2 database bootstrap snapshot
 -- PostgreSQL / Supabase
--- Canonical schema mirrors the versioned migrations in supabase/migrations.
+-- IMPORTANT: supabase/migrations is the authoritative schema history.
+-- Keep this file useful as a bootstrap/reference snapshot only; do not treat it as a replacement for migrations.
 
 create extension if not exists "pgcrypto";
 
@@ -18,7 +19,7 @@ create table if not exists tasks (id uuid primary key default gen_random_uuid(),
 create table if not exists tool_connections (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, provider text not null, status text not null default 'disconnected' check (status in ('connected','disconnected','error')), metadata jsonb not null default '{}', created_at timestamptz not null default now(), updated_at timestamptz not null default now(), unique(user_id, provider));
 create table if not exists luna_audit_log (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, event_type text not null, outcome text not null, risk text, data jsonb not null default '{}', created_at timestamptz not null default now());
 create table if not exists luna_events (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, event_type text not null, data jsonb not null default '{}', created_at timestamptz not null default now());
-create table if not exists luna_actions (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, type text not null check (type in ('task','tool','memory')), status text not null default 'pending' check (status in ('pending','approved','completed','failed','cancelled')), input jsonb not null default '{}', created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists luna_actions (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, type text not null check (type in ('task','tool','memory')), status text not null default 'pending' check (status in ('task','tool','memory')), input jsonb not null default '{}', created_at timestamptz not null default now(), updated_at timestamptz not null default now());
 
 create index if not exists conversations_user_updated_idx on conversations(user_id, updated_at desc);
 create index if not exists messages_conversation_created_idx on messages(conversation_id, created_at);
