@@ -18,7 +18,6 @@ export type GuardRequest = {
   role?: GuardRole;
   approved?: boolean;
   confirmationToken?: string;
-  /** Only a verifier-created context can establish trusted admin status. */
   trustedAdmin?: TrustedAdminContext;
 };
 export type GuardResult = { decision: GuardDecision; allowed: boolean; risk: GuardRisk; reason: string };
@@ -63,17 +62,15 @@ export type GuardInput = { userId: string; message: string; decision: LunaDecisi
 export function evaluateGuard(input: GuardInput): GuardResult {
   const trustedAdmin = isTrustedAdmin(input.trustedAdmin);
   if ((!input.userId || input.userId === "local") && !trustedAdmin) return { decision: "DENY", allowed: false, risk: "CRITICAL", reason: "authenticated user required" };
-  if (CRITICAL_PATTERNS.some((pattern) => pattern.test(input.message)) && !trustedAdmin) return { decision: "DENY", allowed: false, risk: "CRITICAL", reason: "action requires explicit confirmation" };
+  if (CRITICAL_PATTERNS.some((pattern) => pattern.test(input.message)) && !trustedAdmin && !["SAVE_MEMORY", "USE_MEMORY"].includes(input.decision)) return { decision: "DENY", allowed: false, risk: "CRITICAL", reason: "action requires explicit confirmation" };
   if (input.toolName) {
     const permission = getToolPermission(input.toolName);
     if (permission.requiresConfirmation && !trustedAdmin) return { decision: "DENY", allowed: false, risk: "CRITICAL", reason: "tool requires explicit confirmation" };
     return { decision: "ALLOW", allowed: true, risk: trustedAdmin ? "PROTECTED" : permission.level === "read" ? "SAFE" : "PROTECTED", reason: trustedAdmin ? "trusted admin authorization" : "tool permitted by policy" };
   }
-  // A research/search decision is a read-only capability request. It must still
-  // pass the research agent capability gate and provider boundary before use.
-  // Privileged tool actions remain protected by checkGuard/Guardian Gateway.
   if (input.decision === "USE_TOOL" && !trustedAdmin) return { decision: "ALLOW", allowed: true, risk: "SAFE", reason: "read-only research request" };
-  if (["CREATE_TASK", "SAVE_MEMORY"].includes(input.decision) && !trustedAdmin) return { decision: "REQUIRE_APPROVAL", allowed: false, risk: "PROTECTED", reason: "protected action requires explicit approval" };
+  if (input.decision === "SAVE_MEMORY" && !trustedAdmin) return { decision: "ALLOW", allowed: true, risk: "PROTECTED", reason: "authenticated user memory capture" };
+  if (input.decision === "CREATE_TASK" && !trustedAdmin) return { decision: "REQUIRE_APPROVAL", allowed: false, risk: "PROTECTED", reason: "protected action requires explicit approval" };
   return { decision: "ALLOW", allowed: true, risk: "SAFE", reason: trustedAdmin ? "trusted admin authorization" : "safe request" };
 }
 export function getGuardPolicy() {
