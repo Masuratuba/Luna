@@ -5,6 +5,7 @@ import { ExecutionBudget } from "../../../lib/luna/execution-budget";
 import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
 import { getMicrosoftGraphAccessToken } from "../../../lib/integrations/microsoft";
 import { MicrosoftGraphMailProvider } from "../../../lib/providers/mail";
+import { approvalActionKey, consumeDurableApproval } from "../../../lib/luna/approval-store";
 
 const MAX_QUERY = 500;
 const MAX_BODY = 20_000;
@@ -49,9 +50,12 @@ export async function POST(request: Request) {
       const subject = typeof body.subject === "string" ? body.subject.trim() : "";
       const messageBody = typeof body.body === "string" ? body.body.trim() : "";
       if (!to.length || !subject || !messageBody || messageBody.length > MAX_BODY) return NextResponse.json({ error: "to, subject and body are required" }, { status: 400 });
-      if (body.approved !== true || typeof body.confirmationToken !== "string" || !body.confirmationToken.trim()) return NextResponse.json({ ok: false, approvalRequired: true, error: "mail sending requires explicit approval and confirmationToken" }, { status: 403 });
+      const approvalId = typeof body.approvalId === "string" ? body.approvalId.trim() : "";
+      const confirmationToken = typeof body.confirmationToken === "string" ? body.confirmationToken.trim() : "";
+      if (!approvalId || !confirmationToken) return NextResponse.json({ ok: false, approvalRequired: true, error: "mail sending requires an approved action token" }, { status: 403 });
+      await consumeDurableApproval(supabase, user.id, approvalId, confirmationToken, approvalActionKey("mail.send", { to, cc, subject, body: messageBody }));
       const action = createAction("tool", { tool: "mail.send", operation, to, cc, subject, body: messageBody });
-      const result = await executeThroughGuardian({ agent: "action", capability: "mail.send", mode: "execute", action, context: { authenticated: true, userId: user.id, role, trustedAdmin, identity, approved: true, confirmationToken: body.confirmationToken.trim(), budget, handler: async () => ({ result: await provider.send({ to, cc, subject, body: messageBody }) }) } });
+      const result = await executeThroughGuardian({ agent: "action", capability: "mail.send", mode: "execute", action, context: { authenticated: true, userId: user.id, role, trustedAdmin, identity, approved: true, confirmationToken, budget, handler: async () => ({ result: await provider.send({ to, cc, subject, body: messageBody }) }) } });
       if (!result.ok) return NextResponse.json({ ok: false, error: result.error ?? result.guard.reason }, { status: 403 });
       return NextResponse.json({ ok: true, sent: true, result: result.execution?.output?.result ?? null });
     }
@@ -65,6 +69,7 @@ export async function POST(request: Request) {
       if (error.message === "AUTH_IDENTITY_INVALID") return NextResponse.json({ error: "authenticated identity is invalid" }, { status: 503 });
       if (error.message === "MICROSOFT_NOT_CONNECTED") return NextResponse.json({ error: "Microsoft account is not connected" }, { status: 409 });
       if (error.message === "MAIL_FOLDER_INVALID") return NextResponse.json({ error: "folder must be inbox or sent" }, { status: 400 });
+      if (error.message === "APPROVAL_INVALID_OR_CONSUMED") return NextResponse.json({ error: "approval is invalid, expired, consumed, or does not match this action" }, { status: 403 });
     }
     console.error("Luna mail error", error);
     return NextResponse.json({ error: "LUNA MAIL API-Fehler" }, { status: 500 });
