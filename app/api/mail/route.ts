@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       const approvalId = typeof body.approvalId === "string" ? body.approvalId.trim() : "";
       const confirmationToken = typeof body.confirmationToken === "string" ? body.confirmationToken.trim() : "";
       if (!approvalId || !confirmationToken) return NextResponse.json({ ok: false, approvalRequired: true, error: "mail sending requires an approved action token" }, { status: 403 });
-      await consumeDurableApproval(supabase, user.id, approvalId, confirmationToken, approvalActionKey("mail.send", { to, cc, subject, body: messageBody }));
+      await consumeDurableApproval(user.id, approvalId, confirmationToken, approvalActionKey("mail.send", { to, cc, subject, body: messageBody }));
       const action = createAction("tool", { tool: "mail.send", operation, to, cc, subject, body: messageBody });
       const result = await executeThroughGuardian({ agent: "action", capability: "mail.send", mode: "execute", action, context: { authenticated: true, userId: user.id, role, trustedAdmin, identity, approved: true, confirmationToken, budget, handler: async () => ({ result: await provider.send({ to, cc, subject, body: messageBody }) }) } });
       if (!result.ok) return NextResponse.json({ ok: false, error: result.error ?? result.guard.reason }, { status: 403 });
