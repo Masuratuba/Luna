@@ -6,11 +6,13 @@ import { parseCommerceAction, validateCommerceProducts, validatePublishResult } 
 import { createAction } from "../../../lib/luna/core";
 import { ExecutionBudget } from "../../../lib/luna/execution-budget";
 import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
+import { approvalActionKey, consumeDurableApproval } from "../../../lib/luna/approval-store";
 
 export async function POST(request: Request) {
   try {
-    const { user, role, trustedAdmin, identity } = await requireUser(request);
-    const action = parseCommerceAction(await request.json());
+    const { user, role, trustedAdmin, identity, supabase } = await requireUser(request);
+    const rawBody = await request.json() as Record<string, unknown>;
+    const action = parseCommerceAction(rawBody);
     const provider = createProviderRegistry().commerce();
 
     if (action.action === "list") {
@@ -22,6 +24,10 @@ export async function POST(request: Request) {
 
     const access = getAgentAccess("shop", "store.publish", "execute");
     if (!access.allowed || !access.requiresApproval) return NextResponse.json({ error: "commerce publishing denied" }, { status: 403 });
+    const approvalId = typeof rawBody.approvalId === "string" ? rawBody.approvalId.trim() : "";
+    const confirmationToken = typeof rawBody.confirmationToken === "string" ? rawBody.confirmationToken.trim() : "";
+    if (!approvalId || !confirmationToken) return NextResponse.json({ ok: false, approvalRequired: true, error: "commerce publishing requires an approved action token" }, { status: 403 });
+    await consumeDurableApproval(supabase, user.id, approvalId, confirmationToken, approvalActionKey("shop.publish", action.product));
 
     const guardianAction = createAction("tool", {
       tool: "shop.publish",
@@ -39,8 +45,8 @@ export async function POST(request: Request) {
         role,
         trustedAdmin,
         identity,
-        approved: action.approval === true,
-        confirmationToken: action.approval === true ? `commerce:${guardianAction.id}` : undefined,
+        approved: true,
+        confirmationToken,
         budget: new ExecutionBudget(),
         handler: async () => validatePublishResult(await provider.publishProduct(action.product)),
       },
@@ -59,6 +65,7 @@ export async function POST(request: Request) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
       if (error.message === "SUPABASE_NOT_CONFIGURED") return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
+      if (error.message === "APPROVAL_INVALID_OR_CONSUMED") return NextResponse.json({ error: "approval is invalid, expired, consumed, or does not match this product" }, { status: 403 });
       if (error.message.startsWith("COMMERCE_")) return NextResponse.json({ error: error.message }, { status: 400 });
       if (error.message === "COMMERCE_PROVIDER_URL is not configured") return NextResponse.json({ error: "commerce provider is not configured" }, { status: 503 });
     }
