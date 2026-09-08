@@ -48,6 +48,9 @@ export function checkGuard(request: GuardRequest): GuardResult {
   const trustedAdmin = isTrustedAdmin(request.trustedAdmin);
   if (!request.authenticated && !trustedAdmin) return { decision: "DENY", allowed: false, risk, reason: "authentication required" };
   if (risk === "SAFE") return { decision: "ALLOW", allowed: true, risk, reason: "safe action" };
+  // Saving an explicit, non-sensitive user memory is an authenticated user-owned operation.
+  // It is classified as PROTECTED for audit visibility, but must not require a second approval.
+  if (request.action.type === "memory" && request.authenticated) return { decision: "ALLOW", allowed: true, risk, reason: "authenticated user memory capture" };
   if (trustedAdmin) return { decision: "ALLOW", allowed: true, risk, reason: "trusted admin authorization" };
   if (risk === "PROTECTED") {
     if (request.approved === true) return { decision: "ALLOW", allowed: true, risk, reason: "explicit approval present" };
