@@ -1,37 +1,39 @@
 # 🌙 LUNA
 
-**LUNA 0.1 — Personal AI Assistant**
+**LUNA 0.2.0 — Personal AI Assistant**
 
-LUNA is designed as a modular personal AI central: chat first, then memory, organization and tools, with future capabilities added without rebuilding the core.
+LUNA is a modular personal AI assistant: authenticated chat first, then durable memory, organization, provider integrations and controlled tools.
 
 ## Core
-- Chat
-- Memory
-- Profile
-- Notes
-- Reminders
-- Plans / Projects
-- File metadata
-- Tool Engine
-- Secure API architecture
+- Chat and conversation history
+- Durable memory with sensitive-content filtering
+- Tasks and projects
+- Research/search provider boundary
+- Microsoft mail and calendar integration
+- Controlled tool execution through Guardian
+- Scheduler state and persistence
+- Agent isolation and capability policy
+- Diagnostics, audit events and self-tests
 
 ## Architecture
 
-`Frontend → API → Luna Core → Memory / Tools → PostgreSQL`
+`Frontend → API → Auth → Identity → Luna Core → Agent/Capability Gateway → Guard/Approval → Action Engine → Providers → Events/Audit → Health`
 
 ## Repository structure
 
 - `app/` — Next.js UI and API routes
-- `lib/luna/` — orchestration and core logic
+- `lib/luna/` — orchestration, agents, policy, guard and execution logic
+- `lib/providers/` — provider adapters and validation
+- `lib/integrations/` — authenticated external integrations
 - `lib/supabase/` — server-side Supabase access
-- `supabase/migrations/` — versioned database schema
-- `docs/ARCHITECTURE.md` — system architecture and security rules
-- `docs/API.md` — API contract
+- `supabase/migrations/` — versioned database schema and privilege reconciliation
+- `docs/` — architecture, API and checkpoint documentation
+- `tests/` — architecture and regression tests
 
 ## Security
 
-User-owned database tables use Row Level Security. Provider and service secrets remain server-side in environment variables and are never committed to the repository.
+Protected user data is authenticated and user-scoped. Database tables use Row Level Security. Provider and service secrets remain server-side. Sensitive memory content is rejected at API boundaries. Destructive provider actions are routed through the Guardian/action boundary and require explicit approval/confirmation.
 
-## Status
+## Runtime status
 
-Foundation and initial schema are being built incrementally. Database migrations must be applied to the LUNA Supabase project before the application is considered production-ready.
+The repository is CI-gated with TypeScript, ESLint, tests and a production build. Production readiness still depends on the required Supabase, OpenAI and Microsoft configuration being present and on applying all versioned Supabase migrations to the live Luna project.
