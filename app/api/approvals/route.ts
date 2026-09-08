@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
     if (!action || !reason) return NextResponse.json({ error: "action and reason are required" }, { status: 400 });
     const payload = body.payload ?? {};
-    const approval = await createDurableApproval(supabase, user.id, approvalActionKey(action, payload), reason, Number(body.ttlMs));
+    const ttlMs = body.ttlMs === undefined ? undefined : Number(body.ttlMs);
+    const approval = await createDurableApproval(supabase, user.id, approvalActionKey(action, payload), reason, ttlMs);
     return NextResponse.json({ ok: true, approval }, { status: 201 });
   } catch (error) {
     if (error instanceof Error) {
