@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const approvalId = typeof rawBody.approvalId === "string" ? rawBody.approvalId.trim() : "";
     const confirmationToken = typeof rawBody.confirmationToken === "string" ? rawBody.confirmationToken.trim() : "";
     if (!approvalId || !confirmationToken) return NextResponse.json({ ok: false, approvalRequired: true, error: "commerce publishing requires an approved action token" }, { status: 403 });
-    await consumeDurableApproval(supabase, user.id, approvalId, confirmationToken, approvalActionKey("shop.publish", action.product));
+    await consumeDurableApproval(user.id, approvalId, confirmationToken, approvalActionKey("shop.publish", action.product));
 
     const guardianAction = createAction("tool", {
       tool: "shop.publish",
