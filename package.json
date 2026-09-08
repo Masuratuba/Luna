@@ -1,6 +1,6 @@
 {
   "name": "luna",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,7 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "0.12.5",
     "@supabase/supabase-js": "2.112.4",
-    "next": "15.5.24",
+    "next": "15.5.25",
     "openai": "7.5.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -23,7 +23,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "eslint": "9.35.0",
-    "eslint-config-next": "15.5.24",
+    "eslint-config-next": "15.5.25",
     "tsx": "4.23.13",
     "typescript": "5.9.3"
   }
