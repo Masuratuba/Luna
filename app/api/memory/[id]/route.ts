@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "../../../../lib/supabase/auth";
+import { containsSensitiveMemory } from "../../../../lib/luna/memory";
 
 const MEMORY_TYPES = new Set(["personal", "preference", "project", "decision", "fact", "instruction"]);
 type Params = { params: Promise<{ id: string }> };
@@ -21,7 +22,11 @@ export async function PATCH(request: Request, { params }: Params) {
       if (typeof body.content !== "string" || !body.content.trim()) {
         return NextResponse.json({ error: "content must be a non-empty string" }, { status: 400 });
       }
-      update.content = body.content.trim().slice(0, 10000);
+      const content = body.content.trim().replace(/\s+/g, " ").slice(0, 10000);
+      if (containsSensitiveMemory(content)) {
+        return NextResponse.json({ error: "sensitive credentials cannot be stored as memory" }, { status: 400 });
+      }
+      update.content = content;
     }
     if (body.importance !== undefined) {
       const importance = Number(body.importance);
@@ -31,7 +36,7 @@ export async function PATCH(request: Request, { params }: Params) {
       update.importance = importance;
     }
     if (body.metadata !== undefined) {
-      if (!body.metadata || typeof body.metadata !== "object") {
+      if (!body.metadata || typeof body.metadata !== "object" || Array.isArray(body.metadata)) {
         return NextResponse.json({ error: "metadata must be an object" }, { status: 400 });
       }
       update.metadata = body.metadata;
@@ -47,8 +52,9 @@ export async function PATCH(request: Request, { params }: Params) {
       .eq("id", id)
       .eq("user_id", user.id)
       .select()
-      .single();
-    if (error) return NextResponse.json({ error: "memory not found" }, { status: 404 });
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return NextResponse.json({ error: "memory not found" }, { status: 404 });
     return NextResponse.json({ ok: true, memory: data });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
@@ -62,9 +68,16 @@ export async function DELETE(_: Request, { params }: Params) {
   try {
     const { supabase, user } = await requireUser();
     const { id } = await params;
-    const { error } = await supabase.from("memories").delete().eq("id", id).eq("user_id", user.id);
+    const { data, error } = await supabase
+      .from("memories")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
-    return NextResponse.json({ ok: true });
+    if (!data) return NextResponse.json({ error: "memory not found" }, { status: 404 });
+    return NextResponse.json({ ok: true, deleted: data.id });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
     if (error instanceof Error && error.message === "SUPABASE_NOT_CONFIGURED") return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
