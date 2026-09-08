@@ -22,12 +22,6 @@ export async function POST(request: Request) {
 
     const access = getAgentAccess("shop", "store.publish", "execute");
     if (!access.allowed || !access.requiresApproval) return NextResponse.json({ error: "commerce publishing denied" }, { status: 403 });
-    if (action.action !== "publish") return NextResponse.json({ error: "unsupported commerce action" }, { status: 400 });
-
-    const body = action as typeof action & { approved?: boolean; confirmationToken?: string };
-    if (body.approved !== true || typeof body.confirmationToken !== "string" || !body.confirmationToken.trim()) {
-      return NextResponse.json({ ok: false, approvalRequired: true, error: "commerce publishing requires explicit approval and confirmationToken" }, { status: 403 });
-    }
 
     const guardianAction = createAction("tool", {
       tool: "shop.publish",
@@ -45,21 +39,21 @@ export async function POST(request: Request) {
         role,
         trustedAdmin,
         identity,
-        approved: true,
-        confirmationToken: body.confirmationToken.trim(),
+        approved: action.approval === true,
+        confirmationToken: action.approval === true ? `commerce:${guardianAction.id}` : undefined,
         budget: new ExecutionBudget(),
         handler: async () => validatePublishResult(await provider.publishProduct(action.product)),
       },
     });
 
-    if (!result.ok) return NextResponse.json({ ok: false, error: result.error ?? result.guard.reason }, { status: 403 });
+    if (!result.ok) return NextResponse.json({ ok: false, approvalRequired: result.guard.decision === "REQUIRE_APPROVAL", error: result.error ?? result.guard.reason }, { status: 403 });
     const published = result.execution?.output;
     const { error } = await supabase.from("luna_events").insert({
       user_id: user.id,
       event_type: "commerce.publish.completed",
       data: { product_id: action.product.id, provider: provider.name, published },
     });
-    if (error) console.error("Luna commerce event error", error);
+    if (error) throw error;
     return NextResponse.json({ ok: true, action: "publish", result: published, provider: provider.name });
   } catch (error: unknown) {
     if (error instanceof Error) {
