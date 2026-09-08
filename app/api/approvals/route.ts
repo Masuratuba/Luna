@@ -4,14 +4,14 @@ import { approvalActionKey, approveDurableApproval, createDurableApproval } from
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireUser(request);
+    const { user } = await requireUser(request);
     const body = await request.json() as Record<string, unknown>;
 
     if (body.operation === "approve") {
       const id = typeof body.id === "string" ? body.id.trim() : "";
       const token = typeof body.token === "string" ? body.token.trim() : "";
       if (!id || !token) return NextResponse.json({ error: "approval id and token are required" }, { status: 400 });
-      const approval = await approveDurableApproval(supabase, user.id, id, token);
+      const approval = await approveDurableApproval(user.id, id, token);
       return NextResponse.json({ ok: true, approval });
     }
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     if (!action || !reason) return NextResponse.json({ error: "action and reason are required" }, { status: 400 });
     const payload = body.payload ?? {};
     const ttlMs = body.ttlMs === undefined ? undefined : Number(body.ttlMs);
-    const approval = await createDurableApproval(supabase, user.id, approvalActionKey(action, payload), reason, ttlMs);
+    const approval = await createDurableApproval(user.id, approvalActionKey(action, payload), reason, ttlMs);
     return NextResponse.json({ ok: true, approval }, { status: 201 });
   } catch (error) {
     if (error instanceof Error) {
