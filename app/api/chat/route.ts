@@ -83,8 +83,10 @@ export async function POST(request: Request) {
     const intelligence = assessIntelligence({ userId: user.id, message, conversationId });
     const guard = evaluateGuard({ userId: user.id, message, decision: core.decision, role, trustedAdmin });
     const guardEvent = createEvent("guard.checked", user.id, { decision: core.decision, agent: core.agent, agentApproved: core.dispatch.approved, role, trustedAdmin: Boolean(trustedAdmin), risk: guard.risk });
-    await supabase.from("luna_events").insert({ user_id: user.id, event_type: guardEvent.type, data: guardEvent.data });
-    await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: guardEvent.type, outcome: guard.allowed ? "allowed" : "blocked", risk: guard.risk, data: guardEvent.data });
+    const { error: guardEventError } = await supabase.from("luna_events").insert({ user_id: user.id, event_type: guardEvent.type, data: guardEvent.data });
+    if (guardEventError) throw guardEventError;
+    const { error: guardAuditError } = await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: guardEvent.type, outcome: guard.allowed ? "allowed" : "blocked", risk: guard.risk, data: guardEvent.data });
+    if (guardAuditError) throw guardAuditError;
     if (!guard.allowed) return NextResponse.json({ ok: false, blocked: true, risk: guard.risk, error: guard.reason }, { status: 403 });
 
     const history = [...(recentMessages ?? [])].reverse();
@@ -159,7 +161,8 @@ export async function POST(request: Request) {
     const reply = response.output_text || "Ich konnte gerade keine Antwort erzeugen.";
     const { error: assistantMessageError } = await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: reply });
     if (assistantMessageError) throw assistantMessageError;
-    await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
+    const { error: conversationUpdateError } = await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
+    if (conversationUpdateError) throw conversationUpdateError;
     return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, intelligence: { epistemic: intelligence.epistemic, learningSignals: intelligence.learningSignals.length, followUpRelevant: intelligence.followUp.relevant }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
