@@ -8,11 +8,11 @@ LUNA Core is the master orchestrator. Specialist agents do not bypass permission
                          LUNA CORE
                       MASTER / ROUTER
                              |
-      +----------+-----------+-----------+----------+
-      |          |           |           |          |
-   RESEARCH    MEMORY      PLANNER     ACTION    SECURITY
-      |          |           |           |          |
-   search     recall      plans       tools       guard
+      +----------+-----------+-----------+----------+---------+
+      |          |           |           |          |         |
+   RESEARCH    MEMORY      PLANNER     ACTION    SECURITY    SHOP
+      |          |           |           |          |         |
+   search     recall      plans       tools       guard    commerce
       |
  +----+---------+---------+----------+
  |              |                    |
@@ -30,6 +30,7 @@ DOCUMENT      CODING              ANALYSIS
 - `document`: files and document processing
 - `coding`: software engineering
 - `analysis`: evaluation and reporting
+- `shop`: isolated commerce research, catalog and controlled publishing
 
 ## Execution boundary
 
@@ -37,4 +38,6 @@ Every action-producing agent must remain behind the existing security and permis
 
 `request -> route -> permission -> security/guard -> approval (when required) -> queue/action -> audit -> result`
 
-The multi-agent registry is intentionally provider-agnostic. No API keys or external model connections are required to define the architecture.
+The Shop Agent has the additional `store.publish` approval boundary and cannot bypass the general Guardian Gateway.
+
+The multi-agent registry is provider-agnostic. No API keys or external model connections are required to define the architecture.
