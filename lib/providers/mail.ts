@@ -8,8 +8,10 @@ export interface MailProvider { readonly name: string; search(request: MailSearc
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const TIMEOUT_MS = 15_000;
 const MAX_LIMIT = 20;
+const MAIL_FOLDERS = new Set<MailFolder>(["inbox", "sent"]);
 function requiredToken(token?: string) { const value = token?.trim(); if (!value) throw new Error("MICROSOFT_GRAPH_ACCESS_TOKEN is not configured"); return value; }
 function normalizeLimit(value?: number) { const n = Number.isFinite(value) ? Math.floor(value as number) : 10; return Math.min(MAX_LIMIT, Math.max(1, n)); }
+function normalizeFolder(value?: string): MailFolder { const folder = (value ?? "inbox").trim().toLowerCase(); if (!MAIL_FOLDERS.has(folder as MailFolder)) throw new Error("MAIL_FOLDER_INVALID"); return folder as MailFolder; }
 function escapeGraphSearch(value: string) { return value.replace(/\\/g, "\\\\").replace(/\"/g, '\\"'); }
 function asAddress(value: unknown): string | undefined { if (!value || typeof value !== "object") return undefined; const address = "emailAddress" in value ? value.emailAddress : undefined; if (!address || typeof address !== "object") return undefined; const result = "address" in address ? address.address : undefined; return typeof result === "string" ? result : undefined; }
 function asMessage(raw: unknown): MailMessage { if (!raw || typeof raw !== "object") throw new Error("MAIL_INVALID_RESPONSE"); const item = raw as Record<string, unknown>; const recipients = Array.isArray(item.toRecipients) ? item.toRecipients.map(asAddress).filter((x): x is string => Boolean(x)) : []; const from = asAddress(item.from); const id = typeof item.id === "string" ? item.id : ""; const subject = typeof item.subject === "string" ? item.subject : ""; if (!id || !subject) throw new Error("MAIL_INVALID_RESPONSE"); return { id, subject, from, to: recipients, receivedAt: typeof item.receivedDateTime === "string" ? item.receivedDateTime : undefined, bodyPreview: typeof item.bodyPreview === "string" ? item.bodyPreview : undefined, isRead: typeof item.isRead === "boolean" ? item.isRead : undefined }; }
@@ -30,7 +32,7 @@ export class MicrosoftGraphMailProvider implements MailProvider {
   }
   async search(request: MailSearchRequest): Promise<readonly MailMessage[]> {
     const query = request.query.trim(); if (!query) throw new Error("MAIL_QUERY_REQUIRED");
-    const folder = request.folder ?? "inbox"; const params = new URLSearchParams({ "$top": String(normalizeLimit(request.limit)), "$select": "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead" }); params.set("$search", `\"${escapeGraphSearch(query)}\"`);
+    const folder = normalizeFolder(request.folder); const params = new URLSearchParams({ "$top": String(normalizeLimit(request.limit)), "$select": "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead" }); params.set("$search", `\"${escapeGraphSearch(query)}\"`);
     const data = await this.request<{ value?: unknown[] }>(`/me/mailFolders/${folder}/messages?${params.toString()}`, { headers: { ConsistencyLevel: "eventual" } }); return (data.value ?? []).map(asMessage);
   }
   async read(request: MailReadRequest): Promise<MailMessage> { const id = request.id.trim(); if (!id) throw new Error("MAIL_ID_REQUIRED"); const params = new URLSearchParams({ "$select": "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead" }); return asMessage(await this.request<unknown>(`/me/messages/${encodeURIComponent(id)}?${params.toString()}`)); }
