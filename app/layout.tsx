@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LUNA",
+  title: "LUNA 0.2",
   description: "Personal AI Assistant",
 };
 
