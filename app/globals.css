@@ -1,62 +1,62 @@
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 html, body { margin: 0; min-height: 100%; }
 body { font-family: Arial, Helvetica, sans-serif; background: #03050a; color: #f5f7fb; }
 button, input, textarea { font: inherit; }
+a { color: inherit; }
 
-.luna-shell { position: relative; min-height: 100vh; overflow: hidden; display: grid; place-items: center; isolation: isolate; }
-.luna-background {
-  position: absolute;
-  inset: 0;
-  z-index: -3;
-  background:
-    radial-gradient(circle at 50% 8%, rgba(87, 111, 155, .22), transparent 28%),
-    radial-gradient(circle at 18% 72%, rgba(56, 91, 142, .13), transparent 24%),
-    radial-gradient(circle at 82% 34%, rgba(102, 75, 151, .11), transparent 22%),
-    #03050a;
-}
-.luna-background::before,
-.luna-background::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.luna-background::before {
-  opacity: .72;
-  background-image:
-    radial-gradient(circle at 8% 18%, rgba(255,255,255,.8) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 24% 64%, rgba(255,255,255,.55) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 38% 22%, rgba(255,255,255,.5) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 57% 78%, rgba(255,255,255,.5) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 71% 16%, rgba(255,255,255,.7) 0 1px, transparent 1.7px),
-    radial-gradient(circle at 91% 67%, rgba(255,255,255,.55) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 83% 88%, rgba(255,255,255,.45) 0 1px, transparent 1.5px);
-}
-.luna-background::after {
-  background: linear-gradient(180deg, rgba(2,4,9,.08), rgba(2,4,9,.72));
-}
-.luna-overlay { position: absolute; inset: 0; z-index: -2; background: radial-gradient(circle at 50% 0%, transparent 0 34%, rgba(0,0,0,.34) 100%); }
-.luna-content { width: min(900px, 92vw); padding: 28px 0 32px; text-align: center; }
+.luna-shell { position: relative; min-height: 100vh; overflow-x: hidden; isolation: isolate; }
+.luna-background { position: fixed; inset: 0; z-index: -3; background: radial-gradient(circle at 50% 8%, rgba(87,111,155,.22), transparent 28%), radial-gradient(circle at 18% 72%, rgba(56,91,142,.13), transparent 24%), radial-gradient(circle at 82% 34%, rgba(102,75,151,.11), transparent 22%), #03050a; }
+.luna-background::before, .luna-background::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.luna-background::before { opacity: .72; background-image: radial-gradient(circle at 8% 18%, rgba(255,255,255,.8) 0 1px, transparent 1.6px), radial-gradient(circle at 24% 64%, rgba(255,255,255,.55) 0 1px, transparent 1.6px), radial-gradient(circle at 38% 22%, rgba(255,255,255,.5) 0 1px, transparent 1.6px), radial-gradient(circle at 57% 78%, rgba(255,255,255,.5) 0 1px, transparent 1.6px), radial-gradient(circle at 71% 16%, rgba(255,255,255,.7) 0 1px, transparent 1.7px), radial-gradient(circle at 91% 67%, rgba(255,255,255,.55) 0 1px, transparent 1.6px), radial-gradient(circle at 83% 88%, rgba(255,255,255,.45) 0 1px, transparent 1.5px); }
+.luna-background::after { background: linear-gradient(180deg, rgba(2,4,9,.08), rgba(2,4,9,.76)); }
+.luna-overlay { position: fixed; inset: 0; z-index: -2; pointer-events: none; background: radial-gradient(circle at 50% 0%, transparent 0 34%, rgba(0,0,0,.34) 100%); }
 
-.luna-hero { position: relative; width: min(560px, 90vw); height: 168px; margin: 0 auto 2px; display: grid; place-items: center; overflow: visible; }
-.luna-wordmark { position: relative; z-index: 4; margin-top: 12px; font-size: clamp(46px, 10vw, 76px); line-height: 1; font-weight: 800; letter-spacing: .16em; padding-left: .16em; text-shadow: 0 0 18px rgba(255,255,255,.18), 0 8px 40px rgba(0,0,0,.8); }
-.luna-tagline { position: absolute; z-index: 4; bottom: 4px; left: 0; right: 0; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: rgba(255,255,255,.46); }
-.luna-orb { position: absolute; z-index: 2; width: 106px; height: 106px; top: 16px; left: 50%; transform: translateX(-50%); border-radius: 50%; filter: drop-shadow(0 0 28px rgba(126, 159, 211, .22)); }
-.luna-orb-glow { position: absolute; inset: -14px; border-radius: 50%; background: radial-gradient(circle, rgba(156,184,225,.17), transparent 65%); }
+.luna-content { width: min(1080px, 94vw); margin: 0 auto; padding: 18px 0 44px; text-align: center; }
+.luna-topbar { position: sticky; top: 12px; z-index: 20; width: 100%; min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 9px 12px 9px 16px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,.11); border-radius: 18px; background: rgba(6,9,15,.68); backdrop-filter: blur(22px); box-shadow: 0 14px 50px rgba(0,0,0,.28); }
+.luna-nav-brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; font-weight: 800; letter-spacing: .13em; }
+.luna-nav-brand span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: #dfeaff; background: radial-gradient(circle at 35% 30%, #f8fbff, #7e91ad 42%, #182131 72%); box-shadow: 0 0 20px rgba(145,173,215,.2); }
+.luna-nav-links { display: flex; align-items: center; gap: 5px; }
+.luna-nav-links a, .luna-nav-profile { padding: 9px 12px; border-radius: 10px; color: rgba(255,255,255,.58); text-decoration: none; font-size: 12px; transition: .2s ease; }
+.luna-nav-links a:hover, .luna-nav-links a.active { color: #fff; background: rgba(255,255,255,.08); }
+.luna-nav-profile { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid rgba(255,255,255,.1); }
+
+.luna-hero { position: relative; width: min(620px, 90vw); height: 195px; margin: 0 auto 2px; display: grid; place-items: center; overflow: visible; }
+.luna-wordmark { position: relative; z-index: 4; margin-top: 20px; font-size: clamp(50px, 10vw, 82px); line-height: 1; font-weight: 800; letter-spacing: .19em; padding-left: .19em; text-shadow: 0 0 18px rgba(255,255,255,.18), 0 8px 40px rgba(0,0,0,.8); }
+.luna-tagline { position: absolute; z-index: 4; bottom: 5px; left: 0; right: 0; font-size: 10px; letter-spacing: .28em; text-transform: uppercase; color: rgba(255,255,255,.46); }
+.luna-orb { position: absolute; z-index: 2; width: 116px; height: 116px; top: 15px; left: 50%; transform: translateX(-50%); border-radius: 50%; filter: drop-shadow(0 0 30px rgba(126,159,211,.24)); }
+.luna-orb-glow { position: absolute; inset: -18px; border-radius: 50%; background: radial-gradient(circle, rgba(156,184,225,.2), transparent 65%); }
 .luna-orb-core { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #f8fbff 0 3%, #c8d5e7 12%, #899bb5 34%, #4c5d75 58%, #182131 78%, #070a11 100%); box-shadow: inset -15px -13px 22px rgba(0,0,0,.5), inset 8px 7px 18px rgba(255,255,255,.12), 0 0 0 1px rgba(255,255,255,.12); }
-.luna-orb-core::before { content: ""; position: absolute; width: 20px; height: 12px; left: 23px; top: 28px; border-radius: 50%; background: rgba(35,46,62,.3); transform: rotate(-18deg); box-shadow: 32px 23px 0 3px rgba(35,46,62,.18), 14px 43px 0 1px rgba(35,46,62,.22), 45px 5px 0 1px rgba(35,46,62,.13); }
-.luna-orbit { position: absolute; z-index: 1; left: 50%; top: 16px; width: 300px; height: 112px; transform: translateX(-50%) rotate(-13deg); border: 1px solid rgba(171,196,232,.2); border-radius: 50%; }
-.luna-orbit-two { width: 410px; height: 142px; top: 1px; transform: translateX(-50%) rotate(13deg); border-color: rgba(171,196,232,.11); }
+.luna-orb-core::before { content: ""; position: absolute; width: 20px; height: 12px; left: 25px; top: 31px; border-radius: 50%; background: rgba(35,46,62,.3); transform: rotate(-18deg); box-shadow: 34px 24px 0 3px rgba(35,46,62,.18), 15px 46px 0 1px rgba(35,46,62,.22), 47px 6px 0 1px rgba(35,46,62,.13); }
+.luna-orbit { position: absolute; z-index: 1; left: 50%; top: 17px; width: 340px; height: 124px; transform: translateX(-50%) rotate(-13deg); border: 1px solid rgba(171,196,232,.2); border-radius: 50%; }
+.luna-orbit-two { width: 470px; height: 154px; top: 1px; transform: translateX(-50%) rotate(13deg); border-color: rgba(171,196,232,.11); }
 .luna-orbit::after { content: ""; position: absolute; width: 6px; height: 6px; right: 20px; top: 18px; border-radius: 50%; background: #dbe8ff; box-shadow: 0 0 12px rgba(219,232,255,.85); }
-
-.luna-status { display: inline-flex; align-items: center; gap: 9px; margin: 2px 0 12px; opacity: .92; font-size: 13px; letter-spacing: .04em; }
+.luna-status { display: inline-flex; align-items: center; gap: 9px; margin: 0 0 12px; opacity: .92; font-size: 13px; letter-spacing: .04em; }
 .luna-status span { width: 8px; height: 8px; border-radius: 50%; background: #46d369; box-shadow: 0 0 14px rgba(70,211,105,.8); }
-.luna-integrations { margin: 0 auto 14px; }
-.luna-microsoft-connect { display: inline-block; padding: 8px 16px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.06); text-decoration: none; font-size: 13px; backdrop-filter: blur(10px); }
+.luna-integrations { margin: 0 auto 18px; }
+.luna-microsoft-connect { display: inline-block; padding: 8px 16px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.06); text-decoration: none; font-size: 12px; backdrop-filter: blur(10px); }
 .luna-microsoft-connect:hover { background: rgba(255,255,255,.1); }
-.luna-microsoft-connect:focus-visible { outline: 2px solid rgba(70,211,105,.8); outline-offset: 3px; }
 .luna-microsoft-connect.connected { border-color: rgba(70,211,105,.32); color: rgba(255,255,255,.9); }
-.luna-chat { width: min(680px, 100%); height: min(680px, 70vh); min-height: 430px; margin: auto; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.14); border-radius: 28px; background: linear-gradient(180deg, rgba(10,14,22,.72), rgba(5,7,12,.58)); backdrop-filter: blur(18px); box-shadow: 0 24px 90px rgba(0,0,0,.52), 0 0 80px rgba(72,100,146,.07); overflow: hidden; text-align: left; }
+
+.luna-workspace { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 auto 34px; scroll-margin-top: 90px; }
+.luna-work-card { min-height: 78px; display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid rgba(255,255,255,.11); border-radius: 18px; background: linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025)); text-align: left; text-decoration: none; box-shadow: inset 0 1px rgba(255,255,255,.05); transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+.luna-work-card:hover { transform: translateY(-2px); border-color: rgba(174,202,240,.3); background: rgba(255,255,255,.09); }
+.luna-work-card.primary { border-color: rgba(101,151,224,.35); background: linear-gradient(145deg, rgba(68,104,157,.2), rgba(255,255,255,.035)); }
+.work-icon { flex: 0 0 38px; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: rgba(126,159,211,.13); color: #dbe8ff; font-size: 18px; }
+.luna-work-card span:nth-child(2) { min-width: 0; }
+.luna-work-card strong, .luna-work-card small { display: block; }
+.luna-work-card strong { font-size: 13px; }
+.luna-work-card small { margin-top: 4px; color: rgba(255,255,255,.48); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.luna-work-card b { margin-left: auto; color: rgba(255,255,255,.4); font-weight: 400; }
+
+.luna-chat-section, .luna-agents-section { scroll-margin-top: 90px; }
+.luna-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 14px; margin: 0 4px 12px; text-align: left; }
+.eyebrow { display: block; margin-bottom: 4px; color: rgba(164,190,228,.58); font-size: 9px; letter-spacing: .22em; }
+.luna-section-heading h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.luna-live-pill, .section-count { padding: 7px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; color: rgba(255,255,255,.55); font-size: 10px; white-space: nowrap; }
+.luna-live-pill i, .footer-status i { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #46d369; box-shadow: 0 0 8px rgba(70,211,105,.7); }
+
+.luna-chat { width: 100%; height: min(660px, 68vh); min-height: 430px; margin: 0 auto 38px; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.14); border-radius: 28px; background: linear-gradient(180deg, rgba(10,14,22,.72), rgba(5,7,12,.58)); backdrop-filter: blur(18px); box-shadow: 0 24px 90px rgba(0,0,0,.52), 0 0 80px rgba(72,100,146,.07); overflow: hidden; text-align: left; }
 .luna-chat-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.025); }
 .luna-chat-header strong { font-size: 17px; letter-spacing: .03em; }
 .luna-chat-header span { margin-left: 14px; font-size: 12px; opacity: .7; }
@@ -72,6 +72,31 @@ button, input, textarea { font: inherit; }
 .luna-input input::placeholder { color: rgba(255,255,255,.46); }
 .luna-input button { width: 46px; height: 46px; border: 0; border-radius: 50%; color: white; background: #20a854; cursor: pointer; box-shadow: 0 6px 18px rgba(32,168,84,.22); }
 .luna-input button:disabled { opacity: .35; cursor: default; box-shadow: none; }
+
+.luna-agent-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 28px; }
+.luna-agent-card { position: relative; min-height: 72px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 17px; background: rgba(255,255,255,.035); text-align: left; text-decoration: none; overflow: hidden; transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+.luna-agent-card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 0 50%, rgba(100,150,220,.1), transparent 55%); pointer-events: none; }
+.luna-agent-card:hover { transform: translateY(-2px); border-color: rgba(175,205,244,.28); background: rgba(255,255,255,.07); }
+.agent-icon { position: relative; z-index: 1; flex: 0 0 38px; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: #dbe8ff; font-size: 16px; }
+.agent-copy { position: relative; z-index: 1; min-width: 0; }
+.agent-copy strong, .agent-copy small { display: block; }
+.agent-copy strong { font-size: 12px; }
+.agent-copy small { margin-top: 4px; color: rgba(255,255,255,.45); font-size: 10px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-arrow { position: relative; z-index: 1; margin-left: auto; color: rgba(255,255,255,.35); }
+.luna-agent-card.violet .agent-icon { color: #d9b7ff; }
+.luna-agent-card.green .agent-icon { color: #86efac; }
+.luna-agent-card.amber .agent-icon { color: #fcd34d; }
+.luna-agent-card.pink .agent-icon { color: #f0abfc; }
+.luna-agent-card.gold .agent-icon { color: #f6d58b; }
+.luna-agent-card.blue .agent-icon, .luna-agent-card.sky .agent-icon, .luna-agent-card.cyan .agent-icon { color: #9ed0ff; }
+.luna-agent-card.silver .agent-icon { color: #d8e1ef; }
+.luna-agent-card.indigo .agent-icon { color: #b8c7ff; }
+
+.luna-tools-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; padding: 15px; margin: 4px 0 28px; border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: rgba(255,255,255,.025); }
+.luna-tools-strip span { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,.045); color: rgba(255,255,255,.56); font-size: 10px; }
+.luna-tools-strip i { color: #c8d9f3; font-style: normal; }
+.luna-footer { display: flex; justify-content: space-between; gap: 15px; padding: 0 4px; color: rgba(255,255,255,.28); font-size: 9px; letter-spacing: .06em; }
+
 .luna-microsoft { width: 100%; min-height: 52px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: #fff; background: rgba(255,255,255,.09); cursor: pointer; font-weight: 700; }
 .luna-microsoft:disabled { opacity: .5; cursor: default; }
 .luna-panel { width: min(460px, 92vw); margin: 28px auto 0; padding: 28px; border: 1px solid rgba(255,255,255,.16); border-radius: 28px; background: rgba(5,7,11,.58); backdrop-filter: blur(14px); box-shadow: 0 24px 90px rgba(0,0,0,.45); text-align: left; }
@@ -81,14 +106,32 @@ button, input, textarea { font: inherit; }
 .luna-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0 0; color: rgba(255,255,255,.5); font-size: 13px; }
 .luna-divider::before, .luna-divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.12); }
 
-@media (max-width: 600px) {
-  .luna-content { width: 94vw; padding: 18px 0 18px; }
-  .luna-hero { height: 145px; }
-  .luna-orb { width: 88px; height: 88px; top: 12px; }
-  .luna-orbit { width: 250px; height: 94px; top: 10px; }
-  .luna-orbit-two { width: 320px; height: 118px; top: -1px; }
-  .luna-tagline { font-size: 9px; letter-spacing: .18em; }
-  .luna-chat { height: 68vh; min-height: 420px; border-radius: 22px; }
+@media (max-width: 760px) {
+  .luna-content { width: 94vw; padding-top: 10px; }
+  .luna-topbar { top: 8px; margin-bottom: 16px; }
+  .luna-nav-links { gap: 2px; }
+  .luna-nav-links a { padding: 8px 7px; font-size: 10px; }
+  .luna-nav-brand { font-size: 12px; }
+  .luna-nav-brand span { width: 27px; height: 27px; }
+  .luna-hero { height: 165px; }
+  .luna-orb { width: 94px; height: 94px; top: 12px; }
+  .luna-orbit { width: 270px; height: 100px; top: 10px; }
+  .luna-orbit-two { width: 350px; height: 122px; top: -1px; }
+  .luna-tagline { font-size: 8px; letter-spacing: .2em; }
+  .luna-workspace { grid-template-columns: 1fr; gap: 8px; margin-bottom: 28px; }
+  .luna-work-card { min-height: 68px; }
+  .luna-chat { height: 67vh; min-height: 420px; border-radius: 22px; }
   .luna-message { max-width: 88%; }
-  .luna-panel { padding: 22px; border-radius: 22px; }
+  .luna-agent-grid { grid-template-columns: 1fr; }
+  .luna-footer { flex-direction: column; align-items: center; }
+}
+
+@media (max-width: 470px) {
+  .luna-nav-links a:nth-child(4) { display: none; }
+  .luna-nav-profile { width: 32px; height: 32px; }
+  .luna-wordmark { font-size: 49px; }
+  .luna-chat-header { padding: 15px 16px; }
+  .luna-chat-header span { margin-left: 7px; font-size: 10px; }
+  .luna-chat-header small { display: none; }
+  .luna-messages { padding: 16px; }
 }
