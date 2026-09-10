@@ -35,25 +35,40 @@ export function routeByCapability(capability: string): LunaAgentId[] {
   return agentIds.filter((id) => getLunaAgent(id)?.capabilities.includes(capability) ?? false);
 }
 
+const matches = (message: string, pattern: RegExp) => pattern.test(message);
+
 export function isShopTask(message: string): boolean {
-  return /\b(shop|store|produkt|products?|preis|pricing|verkauf|verkaufen|e-?commerce|catalog|katalog)\b/i.test(message);
+  return matches(message, /\b(shop|store|produkt|products?|preis|pricing|verkauf|verkaufen|e-?commerce|catalog|katalog)\b/i);
 }
 
 export function isMailTask(message: string): boolean {
-  return /\b(mail|email|e-?mail|postfach|inbox|nachrichten?)\b/i.test(message);
+  return matches(message, /\b(mail|email|e-?mail|postfach|inbox|nachrichten?)\b/i);
 }
 
 export function isMailSendTask(message: string): boolean {
-  return isMailTask(message) && /\b(sende|send|verschick|schreib|beantworte|reply|antwort|mailen)\b/i.test(message);
+  return isMailTask(message) && matches(message, /\b(sende|send|verschick|schreib|beantworte|reply|antwort|mailen)\b/i);
 }
 
 export function agentForTask(message: string): LunaAgentId {
-  return isShopTask(message) ? "shop" : "luna";
+  const text = message.trim();
+
+  // Explicit domain routing has priority over generic decision routing.
+  if (isShopTask(text)) return "shop";
+  if (isMailSendTask(text)) return "action";
+  if (isMailTask(text)) return "research";
+  if (matches(text, /\b(code|coding|programmier|programmiere|debug|bug|typescript|javascript|python|api|github|repository|repo)\b/i)) return "coding";
+  if (matches(text, /\b(dokument|dokumente|datei|dateien|pdf|vertrag|rechnung|extrahier|extract)\b/i)) return "document";
+  if (matches(text, /\b(analy[sz]|analyse|analysiere|auswertung|bericht|report|vergleich|bewerte|bewertung|zahlen|daten)\b/i)) return "analysis";
+  if (matches(text, /\b(sicherheit|security|berechtigung|permission|zugriff|risiko|risk|passwort|credential)\b/i)) return "security";
+  if (matches(text, /\b(plan|plane|planung|workflow|ablauf|strategie|roadmap|schritte)\b/i)) return "planner";
+  if (matches(text, /\b(merke|merk dir|speicher|erinnerst du dich|was weißt du|was hatten wir)\b/i)) return "memory";
+  if (matches(text, /\b(recherch|recherche|suche|such|quellen|source|internet|web)\b/i)) return "research";
+
+  return "luna";
 }
 
 export function selectAgent(message: string, decision: LunaDecision): LunaAgentId {
-  if (isShopTask(message)) return "shop";
-  if (isMailSendTask(message)) return "action";
-  if (isMailTask(message) && decision === "USE_TOOL") return "research";
+  const taskAgent = agentForTask(message);
+  if (taskAgent !== "luna") return taskAgent;
   return agentForDecision(decision);
 }
