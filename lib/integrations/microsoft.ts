@@ -13,7 +13,28 @@ const MICROSOFT_SCOPES = "openid profile email User.Read Mail.Read Mail.Send Cal
 export function microsoftRedirectUri(origin: string): string { return new URL("/api/integrations/microsoft/callback", origin).toString(); }
 export function microsoftAuthorizationUrl(state: string, redirectUri: string): string { const params = new URLSearchParams({ client_id: env("MICROSOFT_GRAPH_CLIENT_ID"), response_type: "code", redirect_uri: redirectUri, response_mode: "query", scope: MICROSOFT_SCOPES, state, prompt: "consent" }); return `${AUTHORITY}/authorize?${params.toString()}`; }
 type TokenResponse = { access_token: string; refresh_token?: string; expires_in: number; scope?: string; token_type?: string };
-async function tokenRequest(params: URLSearchParams): Promise<TokenResponse> { const response = await fetch(`${AUTHORITY}/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: params.toString(), signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS) }); if (!response.ok) throw new Error(`MICROSOFT_TOKEN_HTTP_${response.status}`); const data = await response.json() as Partial<TokenResponse>; if (typeof data.access_token !== "string" || typeof data.expires_in !== "number") throw new Error("MICROSOFT_TOKEN_RESPONSE_INVALID"); return data as TokenResponse; }
+async function tokenRequest(params: URLSearchParams): Promise<TokenResponse> {
+  const response = await fetch(`${AUTHORITY}/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: params.toString(), signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS) });
+  if (!response.ok) {
+    const raw = await response.text();
+    let detail = `HTTP_${response.status}`;
+    try {
+      const data = JSON.parse(raw) as { error?: unknown; error_description?: unknown; error_codes?: unknown; trace_id?: unknown; correlation_id?: unknown };
+      const error = typeof data.error === "string" ? data.error : "unknown_error";
+      const description = typeof data.error_description === "string" ? data.error_description.replace(/[\r\n]+/g, " ").slice(0, 500) : "";
+      const codes = Array.isArray(data.error_codes) ? data.error_codes.filter((value): value is number => typeof value === "number").join(",") : "";
+      const trace = typeof data.trace_id === "string" ? data.trace_id : "";
+      const correlation = typeof data.correlation_id === "string" ? data.correlation_id : "";
+      detail = [error, description, codes ? `codes=${codes}` : "", trace ? `trace=${trace}` : "", correlation ? `correlation=${correlation}` : ""].filter(Boolean).join(" | ");
+    } catch {
+      detail = raw.replace(/[\r\n]+/g, " ").slice(0, 500) || detail;
+    }
+    throw new Error(`MICROSOFT_TOKEN_${detail}`);
+  }
+  const data = await response.json() as Partial<TokenResponse>;
+  if (typeof data.access_token !== "string" || typeof data.expires_in !== "number") throw new Error("MICROSOFT_TOKEN_RESPONSE_INVALID");
+  return data as TokenResponse;
+}
 export async function exchangeMicrosoftCode(code: string, redirectUri: string): Promise<TokenResponse> { return tokenRequest(new URLSearchParams({ client_id: env("MICROSOFT_GRAPH_CLIENT_ID"), client_secret: env("MICROSOFT_GRAPH_CLIENT_SECRET"), code, redirect_uri: redirectUri, grant_type: "authorization_code", scope: MICROSOFT_SCOPES })); }
 async function graphMe(accessToken: string): Promise<{ id?: string; mail?: string; userPrincipalName?: string }> { const response = await fetch(`${GRAPH}/me?$select=id,mail,userPrincipalName`, { headers: { accept: "application/json", authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS) }); if (!response.ok) throw new Error(`MICROSOFT_GRAPH_ME_HTTP_${response.status}`); return response.json() as Promise<{ id?: string; mail?: string; userPrincipalName?: string }>; }
 export async function saveMicrosoftConnection(userId: string, token: TokenResponse): Promise<void> { const supabase = createSupabaseServiceClient(); if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED"); if (!token.refresh_token) throw new Error("MICROSOFT_REFRESH_TOKEN_MISSING"); const me = await graphMe(token.access_token); const expiresAt = new Date(Date.now() + Math.max(60, token.expires_in - 60) * 1000).toISOString(); const { error } = await supabase.from("microsoft_connections").upsert({ user_id: userId, provider: "microsoft-graph", microsoft_user_id: me.id ?? null, account_email: me.mail ?? me.userPrincipalName ?? null, access_token_encrypted: encrypt(token.access_token), refresh_token_encrypted: encrypt(token.refresh_token), access_token_expires_at: expiresAt, scopes: (token.scope ?? MICROSOFT_SCOPES).split(" ").filter(Boolean), updated_at: new Date().toISOString() }, { onConflict: "user_id,provider" }); if (error) throw new Error("MICROSOFT_CONNECTION_SAVE_FAILED"); }
