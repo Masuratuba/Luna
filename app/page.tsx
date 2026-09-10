@@ -26,7 +26,17 @@ export default async function Home() {
       <div className="luna-background" aria-hidden="true" />
       <div className="luna-overlay" />
       <section className="luna-content">
-        <header className="luna-brand">🌙 LUNA</header>
+        <header className="luna-hero" aria-label="LUNA">
+          <div className="luna-orbit luna-orbit-one" aria-hidden="true" />
+          <div className="luna-orbit luna-orbit-two" aria-hidden="true" />
+          <div className="luna-orb" aria-hidden="true">
+            <div className="luna-orb-glow" />
+            <div className="luna-orb-core" />
+          </div>
+          <div className="luna-wordmark">LUNA</div>
+          <div className="luna-tagline">Deine digitale Begleiterin</div>
+        </header>
+
         <p className="luna-status"><span /> Bereit</p>
         <div className="luna-integrations">
           <a className={`luna-microsoft-connect${microsoftConnected ? " connected" : ""}`} href="/api/integrations/microsoft/start">
