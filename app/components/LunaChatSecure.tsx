@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getLunaAgent, type LunaAgentId } from "../../lib/luna/agents";
+import LunaVoice from "./LunaVoice";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -19,15 +20,22 @@ export default function LunaChatSecure({ initialAgentId }: Props) {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>();
 
+  function addMessage(role: "user" | "assistant", content: string) {
+    setMessages((current) => [...current, { role, content }]);
+  }
+
   async function sendMessage(event: React.FormEvent) {
     event.preventDefault();
     const message = input.trim();
     if (!message || loading) return;
 
     setInput("");
-    setMessages((current) => [...current, { role: "user", content: message }]);
-    setLoading(true);
+    addMessage("user", message);
+    await sendToLuna(message);
+  }
 
+  async function sendToLuna(message: string) {
+    setLoading(true);
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -35,12 +43,12 @@ export default function LunaChatSecure({ initialAgentId }: Props) {
         body: JSON.stringify({ message, conversationId, agentId }),
       });
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "LUNA API-Fehler");
       if (data.conversationId) setConversationId(data.conversationId);
-
-      const answer = data.reply ?? [data.error, data.detail].filter(Boolean).join(" — ") ?? "Keine Antwort erhalten.";
-      setMessages((current) => [...current, { role: "assistant", content: answer }]);
+      const answer = typeof data.reply === "string" ? data.reply : "Keine Antwort erhalten.";
+      addMessage("assistant", answer);
     } catch {
-      setMessages((current) => [...current, { role: "assistant", content: `Verbindung zu ${agent.name} fehlgeschlagen.` }]);
+      addMessage("assistant", `Verbindung zu ${agent.name} fehlgeschlagen.`);
     } finally {
       setLoading(false);
     }
@@ -58,8 +66,14 @@ export default function LunaChatSecure({ initialAgentId }: Props) {
         ))}
         {loading && <div className="luna-message assistant">{agent.name} denkt …</div>}
       </div>
+      <LunaVoice
+        agentId={agentId}
+        conversationId={conversationId}
+        onConversationId={setConversationId}
+        onMessage={addMessage}
+      />
       <form className="luna-input" onSubmit={sendMessage}>
-        <input value={input} onChange={(event) => setInput(event.target.value)} placeholder={`Mit ${agent.name} sprechen …`} aria-label={`Nachricht an ${agent.name}`} autoComplete="off" />
+        <input value={input} onChange={(event) => setInput(event.target.value)} placeholder={`Mit ${agent.name} schreiben …`} aria-label={`Nachricht an ${agent.name}`} autoComplete="off" />
         <button type="submit" disabled={loading || !input.trim()} aria-label="Senden">↑</button>
       </form>
     </div>
