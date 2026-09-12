@@ -39,12 +39,11 @@ export default function Home() {
           <button className={`luna-menu-button ${menuOpen ? "open" : ""}`} type="button" aria-label={menuOpen ? "Menü schließen" : "Menü öffnen"} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
             <span /><span /><span />
           </button>
-          <div className="luna-mini-mark" aria-label="LUNA"><span>L</span><i /></div>
+          <div className="luna-mini-mark" aria-label="LUNA"><span>☾</span><i /></div>
         </nav>
 
         <header className="luna-home-brand" aria-label="LUNA">
           <div className="luna-home-wordmark">LUNA</div>
-          <div className="luna-home-subtitle">DEIN KI-BEGLEITER</div>
         </header>
 
         <div className="luna-home-space" aria-hidden="true" />
@@ -82,7 +81,31 @@ export default function Home() {
       )}
 
       <style>{`
-        .luna-home { min-height: 100svh; height: 100svh; overflow: hidden; background: #03050a; }
+        .luna-home { min-height: 100svh; height: 100svh; overflow: hidden; background: #02040d; }
+        .luna-home .luna-background { overflow: hidden; background:
+          radial-gradient(circle at 50% 34%, rgba(35,63,112,.28), transparent 28%),
+          radial-gradient(circle at 17% 60%, rgba(36,103,170,.18), transparent 25%),
+          radial-gradient(circle at 83% 44%, rgba(139,53,166,.17), transparent 29%),
+          linear-gradient(145deg, #02040d 0%, #050b17 48%, #010207 100%); }
+        .luna-home .luna-background::before { content: ""; position: absolute; inset: 0; opacity: .8; background-image:
+          radial-gradient(circle at 8% 16%, rgba(255,255,255,.8) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 21% 8%, rgba(150,190,255,.6) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 33% 19%, rgba(255,255,255,.48) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 47% 10%, rgba(255,255,255,.55) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 63% 17%, rgba(160,200,255,.48) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 79% 10%, rgba(255,255,255,.58) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 92% 24%, rgba(180,150,255,.55) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 12% 43%, rgba(255,255,255,.4) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 89% 43%, rgba(255,255,255,.42) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 7% 78%, rgba(120,180,255,.5) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 94% 77%, rgba(255,255,255,.45) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 27% 88%, rgba(255,255,255,.38) 0 1px, transparent 1.7px),
+          radial-gradient(circle at 72% 91%, rgba(170,200,255,.42) 0 1px, transparent 1.7px); }
+        .luna-home .luna-background::after { content: ""; position: absolute; width: min(120vw, 600px); height: min(120vw, 600px); left: 50%; top: 53%; transform: translate(-50%,-50%); border-radius: 50%; background:
+          radial-gradient(circle at 43% 39%, rgba(31,45,71,.96) 0 30%, rgba(12,20,36,.88) 47%, transparent 69%); box-shadow: 0 0 110px rgba(49,119,207,.16), 0 0 190px rgba(158,68,210,.1); opacity: .86; }
+        .luna-home .luna-overlay { background:
+          radial-gradient(ellipse at 50% 38%, transparent 0 27%, rgba(0,0,0,.24) 55%, rgba(0,0,0,.72) 100%),
+          linear-gradient(155deg, transparent 0 47%, rgba(106,50,145,.12) 57%, transparent 68%); }
         .luna-home-screen { position: relative; width: 100%; height: 100%; min-height: 100svh; display: flex; flex-direction: column; align-items: center; padding: max(18px, env(safe-area-inset-top)) 18px max(16px, env(safe-area-inset-bottom)); }
         .luna-minimal-nav { position: absolute; z-index: 5; top: max(18px, env(safe-area-inset-top)); left: 18px; right: 18px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
         .luna-menu-button, .luna-mini-mark { pointer-events: auto; }
@@ -91,11 +114,10 @@ export default function Home() {
         .luna-menu-button.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
         .luna-menu-button.open span:nth-child(2) { opacity: 0; }
         .luna-menu-button.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
-        .luna-mini-mark { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(222,239,255,.5); border-radius: 50%; color: #eaf5ff; background: rgba(4,9,16,.38); backdrop-filter: blur(12px); box-shadow: 0 0 22px rgba(105,177,236,.12); font-size: 18px; font-weight: 300; }
+        .luna-mini-mark { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(222,239,255,.5); border-radius: 50%; color: #f2f7ff; background: rgba(4,9,16,.38); backdrop-filter: blur(12px); box-shadow: 0 0 22px rgba(105,177,236,.12); font-size: 22px; font-weight: 300; }
         .luna-mini-mark i { position: absolute; width: 7px; height: 7px; top: 3px; right: 2px; border-radius: 50%; background: #46d369; box-shadow: 0 0 10px rgba(70,211,105,.85); }
-        .luna-home-brand { position: relative; z-index: 2; margin-top: clamp(88px, 13vh, 125px); text-align: center; text-shadow: 0 5px 30px rgba(0,0,0,.8); }
-        .luna-home-wordmark { font-size: clamp(46px, 13vw, 72px); line-height: .95; font-weight: 500; letter-spacing: .22em; padding-left: .22em; color: #f3f7ff; }
-        .luna-home-subtitle { margin-top: 13px; color: rgba(224,239,255,.66); font-size: 9px; letter-spacing: .34em; }
+        .luna-home-brand { position: relative; z-index: 2; margin-top: clamp(92px, 13vh, 125px); text-align: center; text-shadow: 0 5px 30px rgba(0,0,0,.8); }
+        .luna-home-wordmark { font-size: clamp(48px, 14vw, 76px); line-height: .95; font-weight: 200; letter-spacing: .24em; padding-left: .24em; color: #f7f9ff; text-shadow: 0 0 8px rgba(230,240,255,.85), 0 0 22px rgba(170,200,255,.45), 0 8px 40px rgba(0,0,0,.8); }
         .luna-home-space { flex: 1; width: 100%; min-height: 0; }
         .luna-home-voice { position: relative; z-index: 4; width: 100%; display: flex; justify-content: center; margin-bottom: clamp(58px, 11vh, 100px); }
         .luna-menu-layer { position: fixed; inset: 0; z-index: 20; display: flex; }
