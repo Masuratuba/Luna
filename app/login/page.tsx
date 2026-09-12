@@ -1,12 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const authError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const callbackError = authError && authError !== "missing_code" && authError !== "missing_supabase_config"
+    ? `Anmeldung fehlgeschlagen: ${authError}`
+    : authError === "missing_code"
+      ? "Anmeldung fehlgeschlagen: Der Auth-Code fehlt."
+      : authError === "missing_supabase_config"
+        ? "Anmeldung fehlgeschlagen: Supabase ist nicht konfiguriert."
+        : "";
 
   async function sendMagicLink(event: React.FormEvent) {
     event.preventDefault();
@@ -42,7 +53,10 @@ export default function LoginPage() {
           redirectTo: `${window.location.origin}/auth/callback?next=/`,
         },
       });
-      if (error) setStatus(error.message);
+      if (error) {
+        setStatus(error.message);
+        setLoading(false);
+      }
     } catch {
       setStatus("Microsoft-Anmeldung konnte nicht gestartet werden.");
       setLoading(false);
@@ -58,6 +72,8 @@ export default function LoginPage() {
         <div className="luna-panel">
           <h1>Anmelden</h1>
           <p>Deine LUNA-Daten bleiben deinem Konto zugeordnet.</p>
+
+          {callbackError && <p role="alert">{callbackError}</p>}
 
           <button className="luna-microsoft" type="button" onClick={signInWithMicrosoft} disabled={loading}>
             {loading ? "…" : "Mit Microsoft anmelden"}
