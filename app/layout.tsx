@@ -4,6 +4,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LUNA 0.2",
   description: "Personal AI Assistant",
+  applicationName: "LUNA",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#070b18",
+  icons: {
+    icon: [{ url: "/icons/luna-icon.svg", type: "image/svg+xml" }],
+    apple: "/icons/luna-180.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -28,7 +28,7 @@ test("Shop agent exists and routing gives it priority", async () => {
   const agents = await read("lib/luna/agents.ts");
   const router = await read("lib/luna/agent-orchestrator.ts");
   assert.match(agents, /id: "shop"/);
-  assert.match(router, /isShopTask\(message\) \? "shop"/);
+  assert.match(router, /if \(isShopTask\(text\)\) return "shop"/);
 });
 
 test("Financial boundary is disabled until a real provider is connected", async () => {
