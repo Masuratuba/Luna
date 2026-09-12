@@ -22,6 +22,7 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Bereit");
@@ -32,8 +33,17 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      void audioContextRef.current?.close();
     };
   }, []);
+
+  async function unlockAudio() {
+    if (typeof window === "undefined") return;
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioContextRef.current) audioContextRef.current = new AudioContextClass();
+    if (audioContextRef.current.state === "suspended") await audioContextRef.current.resume();
+  }
 
   async function speak(text: string) {
     const response = await fetch("/api/voice/speak", {
@@ -42,11 +52,19 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
       body: JSON.stringify({ text }),
     });
     if (!response.ok) throw new Error("TTS failed");
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.onended = () => URL.revokeObjectURL(url);
-    await audio.play();
+
+    const audioBuffer = await response.arrayBuffer();
+    await unlockAudio();
+    const context = audioContextRef.current;
+    if (!context) throw new Error("Audio playback unavailable");
+    const decoded = await context.decodeAudioData(audioBuffer.slice(0));
+    await new Promise<void>((resolve) => {
+      const source = context.createBufferSource();
+      source.buffer = decoded;
+      source.connect(context.destination);
+      source.onended = () => resolve();
+      source.start(0);
+    });
   }
 
   async function processRecording(blob: Blob) {
@@ -65,7 +83,7 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
 
       const message = transcription.text.trim();
       if (!message) {
-        setStatus("Ich habe nichts verstanden");
+        setStatus("Nichts verstanden");
         return;
       }
 
@@ -89,7 +107,7 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
       console.error("Luna voice error", error);
       const message = error instanceof Error && error.message ? error.message : "Voice konnte nicht ausgeführt werden.";
       onMessage("assistant", `Voice-Fehler: ${message}`);
-      setStatus("Fehler – erneut versuchen");
+      setStatus("Fehler");
     } finally {
       setBusy(false);
     }
@@ -98,6 +116,7 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
   async function startRecording() {
     if (busy || recording || unsupported) return;
     try {
+      await unlockAudio();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       chunksRef.current = [];
@@ -114,7 +133,7 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
       };
       recorder.onerror = () => {
         setRecording(false);
-        setStatus("Mikrofonfehler – erneut versuchen");
+        setStatus("Mikrofonfehler");
       };
       recorderRef.current = recorder;
       recorder.start();
@@ -123,7 +142,7 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
       timeoutRef.current = setTimeout(stopRecording, 30_000);
     } catch (error) {
       console.error("Luna microphone error", error);
-      setStatus("Mikrofonzugriff nicht möglich");
+      setStatus("Mikrofon nicht verfügbar");
     }
   }
 
@@ -149,20 +168,18 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
         <span>{unsupported ? "Voice nicht verfügbar" : recording ? "Ich höre zu …" : busy ? "LUNA arbeitet …" : "Sprich mit LUNA"}</span>
         <b aria-hidden="true">{recording ? "■" : "›"}</b>
       </button>
-      <div className="luna-voice-status" aria-live="polite">{status}</div>
       <style jsx>{`
         .luna-voice { display: flex; flex-direction: column; align-items: center; padding: 0; text-align: center; }
-        .luna-voice-button { min-height: 50px; min-width: min(280px, 78vw); display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 20px; border: 1px solid rgba(108,202,255,.68); border-radius: 999px; color: #eef8ff; background: rgba(3,10,20,.78); backdrop-filter: blur(14px); box-shadow: 0 0 24px rgba(56,177,255,.18), inset 0 0 18px rgba(56,177,255,.05); cursor: pointer; font-size: 13px; font-weight: 650; letter-spacing: .01em; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
-        .luna-voice-button:active { transform: scale(.985); }
-        .luna-voice-button:disabled { opacity: .58; cursor: default; }
-        .luna-voice.recording .luna-voice-button { border-color: rgba(76,216,255,.98); box-shadow: 0 0 0 5px rgba(76,216,255,.07), 0 0 38px rgba(76,216,255,.34), inset 0 0 20px rgba(76,216,255,.1); }
-        .luna-voice-wave { width: 28px; height: 24px; display: flex; align-items: center; justify-content: center; gap: 2px; }
-        .luna-voice-wave i { width: 2px; height: 8px; border-radius: 4px; background: currentColor; opacity: .82; }
+        .luna-voice-button { min-height: 82px; min-width: 82px; width: 82px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0; border: 2px solid rgba(84,255,155,.9); border-radius: 50%; color: #f7fff9; background: radial-gradient(circle, rgba(10,50,30,.9), rgba(2,10,12,.9)); box-shadow: 0 0 20px rgba(84,255,155,.55), 0 0 55px rgba(84,255,155,.25), inset 0 0 25px rgba(84,255,155,.08); cursor: pointer; font-size: 9px; font-weight: 600; letter-spacing: .02em; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .luna-voice-button:active { transform: scale(.92); }
+        .luna-voice-button:disabled { opacity: .65; cursor: default; }
+        .luna-voice.recording .luna-voice-button { border-color: #ff4d67; background: radial-gradient(circle, rgba(75,10,20,.92), rgba(12,2,8,.9)); box-shadow: 0 0 22px rgba(255,77,103,.6), 0 0 55px rgba(255,77,103,.28); }
+        .luna-voice-wave { width: 28px; height: 22px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+        .luna-voice-wave i { width: 2px; height: 8px; border-radius: 4px; background: currentColor; opacity: .88; }
         .luna-voice.recording .luna-voice-wave i { animation: lunaVoicePulse .65s ease-in-out infinite alternate; }
         .luna-voice.recording .luna-voice-wave i:nth-child(2), .luna-voice.recording .luna-voice-wave i:nth-child(4) { animation-delay: .14s; }
         .luna-voice.recording .luna-voice-wave i:nth-child(3) { animation-delay: .28s; }
-        .luna-voice-button b { margin-left: 2px; color: rgba(220,244,255,.72); font-size: 16px; line-height: 1; font-weight: 500; }
-        .luna-voice-status { margin-top: 8px; min-height: 14px; color: rgba(224,239,255,.68); font-size: 10px; letter-spacing: .08em; }
+        .luna-voice-button b { color: rgba(220,244,255,.78); font-size: 14px; line-height: 1; font-weight: 500; }
         @keyframes lunaVoicePulse { from { transform: scaleY(.45); } to { transform: scaleY(1.65); } }
       `}</style>
     </div>
