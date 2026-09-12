@@ -1,3 +1,5 @@
+"use client";
+
 import LunaVoice from "./components/LunaVoice";
 
 export default function Home() {
