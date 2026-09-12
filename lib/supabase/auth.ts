@@ -13,7 +13,7 @@ const USER_SCOPES = ["search:read", "memory:read", "memory:write", "task:create"
 
 export async function requireUser(request?: Request): Promise<{ supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> extends infer T ? NonNullable<T> : never; user: { id: string }; role: "admin" | "user"; trustedAdmin?: TrustedAdminContext; identity: TrustedUserContext }> {
   const ownerSecret = process.env.LUNA_OWNER_SECRET?.trim();
-  const ownerUserId = process.env.LUNA_OWNER_USER_ID?.trim();
+  let ownerUserId = process.env.LUNA_OWNER_USER_ID?.trim();
   const suppliedSecret = request?.headers.get("x-luna-owner-secret")?.trim() ?? "";
 
   if (ownerSecret && ownerUserId && suppliedSecret && secretsMatch(suppliedSecret, ownerSecret)) {
@@ -28,9 +28,17 @@ export async function requireUser(request?: Request): Promise<{ supabase: Awaite
   }
 
   if (isLoginBypassed()) {
-    if (!ownerUserId) throw new Error("TEST_USER_NOT_CONFIGURED");
     const supabase = createSupabaseServiceClient();
     if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
+
+    // Personal development mode: if no explicit owner ID is configured,
+    // resolve the existing Supabase user instead of forcing a login flow.
+    if (!ownerUserId) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+      if (error || !data.users[0]?.id) throw new Error("TEST_USER_NOT_CONFIGURED");
+      ownerUserId = data.users[0].id;
+    }
+
     const now = Date.now();
     const issuer = process.env.LUNA_TRUSTED_AUTH_ISSUER?.trim() || "luna-test-mode";
     const assertion = { subject: ownerUserId, role: "admin" as const, issuer, issuedAt: now, expiresAt: now + 5 * 60 * 1000, nonce: randomUUID(), scopes: ["luna:*"] as string[] };
