@@ -1,5 +1,6 @@
 import { timingSafeEqual, randomUUID } from "node:crypto";
 import { createSupabaseServerClient, createSupabaseServiceClient } from "./server";
+import { isLoginBypassed } from "./mode";
 import { ExternalTrustedAuthAdapter, type TrustedAdminContext, type TrustedUserContext } from "../luna/trusted-auth";
 
 function secretsMatch(provided: string, expected: string): boolean {
@@ -9,10 +10,6 @@ function secretsMatch(provided: string, expected: string): boolean {
 }
 
 const USER_SCOPES = ["search:read", "memory:read", "memory:write", "task:create", "mail.read", "mail.send", "calendar.read", "calendar.write"];
-
-export function isLoginBypassed(): boolean {
-  return process.env.LUNA_TEST_MODE?.trim().toLowerCase() === "true";
-}
 
 export async function requireUser(request?: Request): Promise<{ supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> extends infer T ? NonNullable<T> : never; user: { id: string }; role: "admin" | "user"; trustedAdmin?: TrustedAdminContext; identity: TrustedUserContext }> {
   const ownerSecret = process.env.LUNA_OWNER_SECRET?.trim();
