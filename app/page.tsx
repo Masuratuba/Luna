@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import LunaChatSecure from "./components/LunaChatSecure";
 import { createSupabaseServerClient } from "../lib/supabase/server";
 import { lunaAgents } from "../lib/luna/agents";
+import type { LunaAgentId } from "../lib/luna/agents";
 
 const agentIcons: Record<string, string> = {
   luna: "✦",
@@ -29,7 +30,15 @@ const agentAccent: Record<string, string> = {
   shop: "gold",
 };
 
-export default async function Home() {
+function isAgentId(value: string | undefined): value is LunaAgentId {
+  return Boolean(value && lunaAgents.some((agent) => agent.id === value));
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string | string[] | undefined }>;
+}) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/login?error=missing_supabase_config");
 
@@ -47,6 +56,10 @@ export default async function Home() {
   const microsoftLabel = microsoftConnected
     ? `Microsoft verbunden${microsoftConnection?.account_email ? ` · ${microsoftConnection.account_email}` : ""}`
     : "Microsoft verbinden";
+
+  const params = await searchParams;
+  const rawAgent = Array.isArray(params.agent) ? params.agent[0] : params.agent;
+  const selectedAgentId = isAgentId(rawAgent) ? rawAgent : "luna";
 
   return (
     <main className="luna-shell">
@@ -103,10 +116,10 @@ export default async function Home() {
 
         <section id="chat" className="luna-chat-section" aria-label="LUNA Chat">
           <div className="luna-section-heading">
-            <div><span className="eyebrow">CONVERSATION</span><h2>Chat mit LUNA</h2></div>
+            <div><span className="eyebrow">CONVERSATION</span><h2>Chat mit {lunaAgents.find((agent) => agent.id === selectedAgentId)?.name ?? "LUNA"}</h2></div>
             <span className="luna-live-pill"><i /> Online</span>
           </div>
-          <LunaChatSecure />
+          <LunaChatSecure initialAgentId={selectedAgentId} />
         </section>
 
         <section id="agents" className="luna-agents-section" aria-label="LUNA Agenten">
@@ -116,7 +129,7 @@ export default async function Home() {
           </div>
           <div className="luna-agent-grid">
             {lunaAgents.map((agent) => (
-              <a className={`luna-agent-card ${agentAccent[agent.id] ?? "blue"}`} href="#chat" key={agent.id} id={`agent-${agent.id}`} aria-label={`${agent.name} auswählen`}>
+              <a className={`luna-agent-card ${agentAccent[agent.id] ?? "blue"}`} href={`/?agent=${encodeURIComponent(agent.id)}#chat`} key={agent.id} id={`agent-${agent.id}`} aria-label={`${agent.name} auswählen`}>
                 <span className="agent-icon">{agentIcons[agent.id] ?? "✦"}</span>
                 <span className="agent-copy"><strong>{agent.name}</strong><small>{agent.description}</small></span>
                 <span className="agent-arrow">→</span>
