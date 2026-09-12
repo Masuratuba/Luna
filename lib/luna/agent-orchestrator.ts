@@ -62,7 +62,7 @@ export function agentForTask(message: string): LunaAgentId {
   if (matches(text, /\b(sicherheit|security|berechtigung|permission|zugriff|risiko|risk|passwort|credential)\b/i)) return "security";
   if (matches(text, /\b(plan|plane|planung|workflow|ablauf|strategie|roadmap|schritte)\b/i)) return "planner";
   if (matches(text, /\b(merke|merk dir|speicher|erinnerst du dich|was weißt du|was hatten wir)\b/i)) return "memory";
-  if (matches(text, /\b(recherch|recherche|suche|such|quellen|source|internet|web)\b/i)) return "research";
+  if (matches(text, /\b(recherch\w*|suche\w*|such\w*|quellen|source|internet|web)\b/i)) return "research";
 
   return "luna";
 }
