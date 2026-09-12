@@ -1,3 +1,3 @@
 export function isLoginBypassed(): boolean {
-  return true;
+  return process.env.LUNA_TEST_MODE?.trim().toLowerCase() === "true";
 }
