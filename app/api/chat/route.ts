@@ -35,7 +35,7 @@ async function createPendingAction(supabase: SupabaseClient, userId: string, act
   const event = createEvent("action.created", userId, { actionId: action.id, type: action.type, agent });
   const { error: eventError } = await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
   if (eventError) throw eventError;
-  const { error: auditError } = await supabase.from("luna_audit_log").insert({ user_id: user.id, event_type: event.type, outcome: "success", data: event.data });
+  const { error: auditError } = await supabase.from("luna_audit_log").insert({ user_id: userId, event_type: event.type, outcome: "success", data: event.data });
   if (auditError) throw auditError;
 }
 
