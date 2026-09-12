@@ -51,20 +51,17 @@ export function isMailSendTask(message: string): boolean {
 
 export function agentForTask(message: string): LunaAgentId {
   const text = message.trim();
-
-  // Explicit domain routing has priority over generic decision routing.
-  if (isShopTask(text)) return "shop";
-  if (isMailSendTask(text)) return "action";
-  if (isMailTask(text)) return "research";
-  if (matches(text, /\b(code|coding|programmier|programmiere|debug|bug|typescript|javascript|python|api|github|repository|repo)\b/i)) return "coding";
-  if (matches(text, /\b(dokument|dokumente|datei|dateien|pdf|vertrag|rechnung|extrahier|extract)\b/i)) return "document";
-  if (matches(text, /\b(analy[sz]|analyse|analysiere|auswertung|bericht|report|vergleich|bewerte|bewertung|zahlen|daten)\b/i)) return "analysis";
-  if (matches(text, /\b(sicherheit|security|berechtigung|permission|zugriff|risiko|risk|passwort|credential)\b/i)) return "security";
-  if (matches(text, /\b(plan|plane|planung|workflow|ablauf|strategie|roadmap|schritte)\b/i)) return "planner";
-  if (matches(text, /\b(merke|merk dir|speicher|erinnerst du dich|was weißt du|was hatten wir)\b/i)) return "memory";
-  if (matches(text, /\b(recherch\w*|suche\w*|such\w*|quellen|source|internet|web)\b/i)) return "research";
-
-  return "luna";
+  return isShopTask(text) ? "shop"
+    : isMailSendTask(text) ? "action"
+    : isMailTask(text) ? "research"
+    : matches(text, /\b(code|coding|programmier\w*|debug|bug|typescript|javascript|python|api|github|repository|repo)\b/i) ? "coding"
+    : matches(text, /\b(dokument\w*|datei\w*|pdf|vertrag|rechnung|extrahier\w*|extract)\b/i) ? "document"
+    : matches(text, /\b(analy[sz]\w*|analyse\w*|auswertung\w*|bericht\w*|report\w*|vergleich\w*|bewert\w*|zahlen|daten)\b/i) ? "analysis"
+    : matches(text, /\b(sicherheit|security|berechtigung|permission|zugriff|risiko|risk|passwort|credential)\b/i) ? "security"
+    : matches(text, /\b(plan\w*|workflow|ablauf|strategie|roadmap|schritte)\b/i) ? "planner"
+    : matches(text, /\b(merke|merk dir|speicher\w*|erinnerst du dich|was weißt du|was hatten wir)\b/i) ? "memory"
+    : matches(text, /\b(recherch\w*|suche\w*|such\w*|quellen|source|internet|web)\b/i) ? "research"
+    : "luna";
 }
 
 export function selectAgent(message: string, decision: LunaDecision): LunaAgentId {
