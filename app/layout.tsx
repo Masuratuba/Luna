@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   themeColor: "#070b18",
   icons: {
     icon: [{ url: "/icons/luna-icon.svg", type: "image/svg+xml" }],
-    apple: "/icons/luna-icon.svg",
+    apple: "/icons/luna-180.png",
   },
 };
 
