@@ -141,6 +141,18 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
         <span>{listening ? "Zuhören stoppen" : speaking ? "LUNA spricht" : "Mit LUNA sprechen"}</span>
       </button>
       <div className="luna-voice-status" aria-live="polite">{status}</div>
+      <style jsx>{`
+        .luna-voice { padding: 14px 18px 12px; border-top: 1px solid rgba(255,255,255,.07); text-align: center; background: rgba(0,0,0,.08); }
+        .luna-voice-button { min-height: 52px; min-width: min(260px, 82vw); display: inline-flex; align-items: center; justify-content: center; gap: 11px; border: 1px solid rgba(112,220,151,.34); border-radius: 999px; color: #fff; background: linear-gradient(180deg, rgba(38,177,91,.95), rgba(26,139,69,.95)); box-shadow: 0 9px 28px rgba(32,168,84,.2); cursor: pointer; font-weight: 700; }
+        .luna-voice-button:disabled { opacity: .65; cursor: default; }
+        .luna-voice.listening .luna-voice-button { border-color: rgba(255,255,255,.35); box-shadow: 0 0 0 5px rgba(70,211,105,.08), 0 12px 36px rgba(32,168,84,.28); }
+        .luna-voice-orb { width: 27px; height: 27px; display: flex; align-items: center; justify-content: center; gap: 2px; }
+        .luna-voice-orb i { width: 3px; height: 10px; border-radius: 4px; background: currentColor; opacity: .75; }
+        .luna-voice.listening .luna-voice-orb i:nth-child(1), .luna-voice.listening .luna-voice-orb i:nth-child(5) { height: 8px; }
+        .luna-voice.listening .luna-voice-orb i:nth-child(2), .luna-voice.listening .luna-voice-orb i:nth-child(4) { height: 17px; }
+        .luna-voice.listening .luna-voice-orb i:nth-child(3) { height: 23px; }
+        .luna-voice-status { min-height: 17px; margin-top: 7px; color: rgba(255,255,255,.48); font-size: 11px; letter-spacing: .03em; }
+      `}</style>
     </div>
   );
 }
