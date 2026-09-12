@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { LunaAgentId } from "../../lib/luna/agents";
 
 type Props = {
@@ -33,6 +33,53 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
   const [speaking, setSpeaking] = useState(false);
   const [status, setStatus] = useState("Voice bereit");
   const [supported, setSupported] = useState(true);
+
+  const speak = useCallback((text: string) => {
+    if (!("speechSynthesis" in window)) {
+      setStatus("Antwort erhalten");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "de-DE";
+    utterance.rate = 0.98;
+    utterance.pitch = 1;
+    utterance.onstart = () => {
+      setSpeaking(true);
+      setStatus("LUNA spricht …");
+    };
+    utterance.onend = () => {
+      setSpeaking(false);
+      setStatus("Voice bereit");
+    };
+    utterance.onerror = () => {
+      setSpeaking(false);
+      setStatus("Voice bereit");
+    };
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const sendToLuna = useCallback(async (message: string) => {
+    setStatus("LUNA denkt …");
+    onMessage("user", message);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, conversationId, agentId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "LUNA API-Fehler");
+      if (data.conversationId) onConversationId(data.conversationId);
+      const reply = typeof data.reply === "string" ? data.reply : "Ich konnte gerade keine Antwort erzeugen.";
+      onMessage("assistant", reply);
+      speak(reply);
+    } catch {
+      const reply = "Die Verbindung zu LUNA ist gerade fehlgeschlagen.";
+      onMessage("assistant", reply);
+      speak(reply);
+    }
+  }, [agentId, conversationId, onConversationId, onMessage, speak]);
 
   useEffect(() => {
     const recognitionCtor = (window as WindowWithRecognition).SpeechRecognition ?? (window as WindowWithRecognition).webkitSpeechRecognition;
@@ -69,54 +116,7 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
       recognition.stop();
       recognitionRef.current = null;
     };
-  }, [agentId, conversationId]);
-
-  async function sendToLuna(message: string) {
-    setStatus("LUNA denkt …");
-    onMessage("user", message);
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, conversationId, agentId }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "LUNA API-Fehler");
-      if (data.conversationId) onConversationId(data.conversationId);
-      const reply = typeof data.reply === "string" ? data.reply : "Ich konnte gerade keine Antwort erzeugen.";
-      onMessage("assistant", reply);
-      speak(reply);
-    } catch {
-      const reply = "Die Verbindung zu LUNA ist gerade fehlgeschlagen.";
-      onMessage("assistant", reply);
-      speak(reply);
-    }
-  }
-
-  function speak(text: string) {
-    if (!("speechSynthesis" in window)) {
-      setStatus("Antwort erhalten");
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "de-DE";
-    utterance.rate = 0.98;
-    utterance.pitch = 1;
-    utterance.onstart = () => {
-      setSpeaking(true);
-      setStatus("LUNA spricht …");
-    };
-    utterance.onend = () => {
-      setSpeaking(false);
-      setStatus("Voice bereit");
-    };
-    utterance.onerror = () => {
-      setSpeaking(false);
-      setStatus("Voice bereit");
-    };
-    window.speechSynthesis.speak(utterance);
-  }
+  }, [sendToLuna]);
 
   function toggleVoice() {
     if (!supported || speaking) return;
