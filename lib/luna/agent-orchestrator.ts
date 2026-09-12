@@ -51,7 +51,7 @@ export function isMailSendTask(message: string): boolean {
 
 export function agentForTask(message: string): LunaAgentId {
   const text = message.trim();
-  return isShopTask(text) ? "shop"
+  return isShopTask(message) ? "shop"
     : isMailSendTask(text) ? "action"
     : isMailTask(text) ? "research"
     : matches(text, /\b(code|coding|programmier\w*|debug|bug|typescript|javascript|python|api|github|repository|repo)\b/i) ? "coding"
