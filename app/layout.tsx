@@ -8,11 +8,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   themeColor: "#070b18",
   icons: {
-    icon: [
-      { url: "/icons/luna-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/luna-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: "/icons/luna-180.png",
+    icon: [{ url: "/icons/luna-icon.svg", type: "image/svg+xml" }],
+    apple: "/icons/luna-icon.svg",
   },
 };
 
