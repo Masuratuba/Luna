@@ -8,7 +8,9 @@ function decrypt(value: string): string { const [ivRaw, tagRaw, ciphertextRaw] =
 function signState(value: string): string { return createHmac("sha256", encryptionKey()).update(value).digest("base64url"); }
 export function createMicrosoftOAuthState(): { value: string; cookieValue: string } { const nonce = randomBytes(32).toString("base64url"); return { value: nonce, cookieValue: `${nonce}.${signState(nonce)}` }; }
 export function verifyMicrosoftOAuthState(value: string | undefined, cookieValue: string | undefined): boolean { if (!value || !cookieValue) return false; const [nonce, signature] = cookieValue.split("."); if (!nonce || !signature || nonce !== value) return false; const expected = Buffer.from(signState(nonce)); const actual = Buffer.from(signature); return expected.length === actual.length && timingSafeEqual(expected, actual); }
-export function microsoftOAuthCookieOptions() { return { httpOnly: true, secure: true, sameSite: "lax" as const, path: "/", maxAge: STATE_TTL_SECONDS }; }
+// The state cookie must survive the cross-site Microsoft -> LUNA top-level redirect on Safari/iOS.
+// It is still protected by the signed state value, Secure and HttpOnly attributes, and a short TTL.
+export function microsoftOAuthCookieOptions() { return { httpOnly: true, secure: true, sameSite: "none" as const, path: "/", maxAge: STATE_TTL_SECONDS }; }
 const MICROSOFT_SCOPES = "openid profile email User.Read Mail.Read Mail.Send Calendars.ReadWrite offline_access";
 export function microsoftRedirectUri(origin: string): string { return new URL("/api/integrations/microsoft/callback", origin).toString(); }
 export function microsoftAuthorizationUrl(state: string, redirectUri: string): string { const params = new URLSearchParams({ client_id: env("MICROSOFT_GRAPH_CLIENT_ID"), response_type: "code", redirect_uri: redirectUri, response_mode: "query", scope: MICROSOFT_SCOPES, state, prompt: "consent" }); return `${AUTHORITY}/authorize?${params.toString()}`; }
