@@ -137,21 +137,28 @@ export default function LunaVoice({ agentId, conversationId, onConversationId, o
   return (
     <div className={`luna-voice ${listening ? "listening" : ""} ${speaking ? "speaking" : ""}`}>
       <button type="button" className="luna-voice-button" onClick={toggleVoice} disabled={!supported || speaking} aria-label={listening ? "Voice stoppen" : "Mit LUNA sprechen"}>
-        <span className="luna-voice-orb" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-        <span>{listening ? "Zuhören stoppen" : speaking ? "LUNA spricht" : "Mit LUNA sprechen"}</span>
+        <span className="luna-voice-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+        <span>{listening ? "Zuhören stoppen" : speaking ? "LUNA spricht" : "Sprich mit LUNA"}</span>
+        <b aria-hidden="true">›</b>
       </button>
       <div className="luna-voice-status" aria-live="polite">{status}</div>
       <style jsx>{`
-        .luna-voice { padding: 14px 18px 12px; border-top: 1px solid rgba(255,255,255,.07); text-align: center; background: rgba(0,0,0,.08); }
-        .luna-voice-button { min-height: 52px; min-width: min(260px, 82vw); display: inline-flex; align-items: center; justify-content: center; gap: 11px; border: 1px solid rgba(112,220,151,.34); border-radius: 999px; color: #fff; background: linear-gradient(180deg, rgba(38,177,91,.95), rgba(26,139,69,.95)); box-shadow: 0 9px 28px rgba(32,168,84,.2); cursor: pointer; font-weight: 700; }
-        .luna-voice-button:disabled { opacity: .65; cursor: default; }
-        .luna-voice.listening .luna-voice-button { border-color: rgba(255,255,255,.35); box-shadow: 0 0 0 5px rgba(70,211,105,.08), 0 12px 36px rgba(32,168,84,.28); }
-        .luna-voice-orb { width: 27px; height: 27px; display: flex; align-items: center; justify-content: center; gap: 2px; }
-        .luna-voice-orb i { width: 3px; height: 10px; border-radius: 4px; background: currentColor; opacity: .75; }
-        .luna-voice.listening .luna-voice-orb i:nth-child(1), .luna-voice.listening .luna-voice-orb i:nth-child(5) { height: 8px; }
-        .luna-voice.listening .luna-voice-orb i:nth-child(2), .luna-voice.listening .luna-voice-orb i:nth-child(4) { height: 17px; }
-        .luna-voice.listening .luna-voice-orb i:nth-child(3) { height: 23px; }
-        .luna-voice-status { min-height: 17px; margin-top: 7px; color: rgba(255,255,255,.48); font-size: 11px; letter-spacing: .03em; }
+        .luna-voice { display: flex; flex-direction: column; align-items: center; padding: 0; text-align: center; }
+        .luna-voice-button { min-height: 48px; min-width: min(245px, 72vw); display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 18px; border: 1px solid rgba(108,202,255,.62); border-radius: 999px; color: #eef8ff; background: rgba(3,10,20,.72); backdrop-filter: blur(14px); box-shadow: 0 0 22px rgba(56,177,255,.16), inset 0 0 18px rgba(56,177,255,.05); cursor: pointer; font-size: 13px; font-weight: 650; letter-spacing: .01em; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .luna-voice-button:hover { transform: translateY(-1px); border-color: rgba(154,224,255,.9); box-shadow: 0 0 30px rgba(56,177,255,.24), inset 0 0 18px rgba(56,177,255,.07); }
+        .luna-voice-button:disabled { opacity: .72; cursor: default; }
+        .luna-voice.listening .luna-voice-button { border-color: rgba(76,216,255,.95); box-shadow: 0 0 0 4px rgba(76,216,255,.07), 0 0 34px rgba(76,216,255,.3), inset 0 0 20px rgba(76,216,255,.08); }
+        .luna-voice-wave { width: 28px; height: 24px; display: flex; align-items: center; justify-content: center; gap: 2px; }
+        .luna-voice-wave i { width: 2px; height: 8px; border-radius: 4px; background: currentColor; opacity: .78; }
+        .luna-voice.listening .luna-voice-wave i:nth-child(1), .luna-voice.listening .luna-voice-wave i:nth-child(5) { height: 7px; }
+        .luna-voice.listening .luna-voice-wave i:nth-child(2), .luna-voice.listening .luna-voice-wave i:nth-child(4) { height: 15px; }
+        .luna-voice.listening .luna-voice-wave i:nth-child(3) { height: 22px; }
+        .luna-voice.speaking .luna-voice-wave i { animation: lunaVoicePulse .75s ease-in-out infinite alternate; }
+        .luna-voice.speaking .luna-voice-wave i:nth-child(2), .luna-voice.speaking .luna-voice-wave i:nth-child(4) { animation-delay: .15s; }
+        .luna-voice.speaking .luna-voice-wave i:nth-child(3) { animation-delay: .3s; }
+        .luna-voice-button b { margin-left: 2px; color: rgba(220,244,255,.72); font-size: 22px; line-height: 1; font-weight: 300; }
+        .luna-voice-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        @keyframes lunaVoicePulse { from { transform: scaleY(.55); } to { transform: scaleY(1.7); } }
       `}</style>
     </div>
   );
