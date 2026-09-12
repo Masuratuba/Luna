@@ -10,6 +10,7 @@ import { requireUser } from "../../../lib/supabase/auth";
 import { createProviderRegistry } from "../../../lib/providers/registry";
 import { getOpenAI } from "../../../lib/openai";
 import { executeLunaCommand, parseLunaCommand } from "../../../lib/luna/command-capabilities";
+import { getLunaAgent } from "../../../lib/luna/agents";
 
 const MAX_CHAT_MESSAGE_CHARS = 20_000;
 type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
@@ -49,6 +50,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const requestedConversationId = typeof body.conversationId === "string" && body.conversationId.trim() ? body.conversationId.trim() : null;
+    const requestedAgentId = typeof body.agentId === "string" ? body.agentId.trim() : "";
+    const conversationAgent = getLunaAgent(requestedAgentId) ?? getLunaAgent("luna")!;
     if (!message) return NextResponse.json({ error: "message is required" }, { status: 400 });
     if (message.length > MAX_CHAT_MESSAGE_CHARS) return NextResponse.json({ error: "message is too long" }, { status: 413 });
 
@@ -156,14 +159,14 @@ export async function POST(request: Request) {
 
     const learningContext = intelligence.learningSignals.length ? `Detected learning signals (do not persist automatically):\n${intelligence.learningSignals.map((signal) => `- ${signal.type} (${signal.confidence}): ${signal.content}`).join("\n")}` : "No durable learning signal detected from this message.";
     const followUpContext = intelligence.followUp.relevant ? `A focused getting-to-know-you follow-up may be useful. Suggested question: ${intelligence.followUp.suggestedQuestion}` : "Do not force a getting-to-know-you question in this turn.";
-    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nDecision: ${core.decision}\nAssigned agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? "completed" : "not applicable"}\nEpistemic state: ${intelligence.epistemic}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nIntelligence guidance:\n${learningContext}\n${followUpContext}\n\nTruth rules:\n${intelligence.truthRules.map((rule) => `- ${rule}`).join("\n")}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is completed, acknowledge the actual completed operation. Do not claim an action was completed unless the execution status says completed.${searchContext}`;
+    const instructions = `${LUNA_SYSTEM_PROMPT}\n\nConversation agent: ${conversationAgent.name}\nConversation agent role: ${conversationAgent.description}\nDecision: ${core.decision}\nAssigned action agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? "completed" : "not applicable"}\nEpistemic state: ${intelligence.epistemic}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nIntelligence guidance:\n${learningContext}\n${followUpContext}\n\nTruth rules:\n${intelligence.truthRules.map((rule) => `- ${rule}`).join("\n")}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is completed, acknowledge the actual completed operation. Do not claim an action was completed unless the execution status says completed.${searchContext}`;
     const response = await getOpenAI().responses.create({ model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna", instructions, store: false, input: history.map((item) => ({ role: item.role, content: item.content })) });
     const reply = response.output_text || "Ich konnte gerade keine Antwort erzeugen.";
     const { error: assistantMessageError } = await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: reply });
     if (assistantMessageError) throw assistantMessageError;
     const { error: conversationUpdateError } = await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
     if (conversationUpdateError) throw conversationUpdateError;
-    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: core.agent, guard: { risk: guard.risk }, intelligence: { epistemic: intelligence.epistemic, learningSignals: intelligence.learningSignals.length, followUpRelevant: intelligence.followUp.relevant }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, reply });
+    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: conversationAgent.id, actionAgent: core.agent, guard: { risk: guard.risk }, intelligence: { epistemic: intelligence.epistemic, learningSignals: intelligence.learningSignals.length, followUpRelevant: intelligence.followUp.relevant }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
