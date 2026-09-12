@@ -38,7 +38,7 @@ export function routeByCapability(capability: string): LunaAgentId[] {
 const matches = (message: string, pattern: RegExp) => pattern.test(message);
 
 export function isShopTask(message: string): boolean {
-  return matches(message, /\b(shop|store|produkt|products?|preis|pricing|verkauf|verkaufen|e-?commerce|catalog|katalog)\b/i);
+  return matches(message, /\b(shop|store|produkt\w*|products?|preis\w*|pricing|verkauf\w*|e-?commerce|catalog|katalog\w*)\b/i);
 }
 
 export function isMailTask(message: string): boolean {
