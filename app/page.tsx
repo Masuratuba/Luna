@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
 import LunaChatSecure from "./components/LunaChatSecure";
-import { createSupabaseServerClient } from "../lib/supabase/server";
 import { lunaAgents } from "../lib/luna/agents";
 import type { LunaAgentId } from "../lib/luna/agents";
 
@@ -39,24 +37,6 @@ export default async function Home({
 }: {
   searchParams: Promise<{ agent?: string | string[] | undefined }>;
 }) {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) redirect("/login?error=missing_supabase_config");
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: microsoftConnection } = await supabase
-    .from("microsoft_connections")
-    .select("account_email")
-    .eq("user_id", user.id)
-    .eq("provider", "microsoft-graph")
-    .maybeSingle();
-
-  const microsoftConnected = Boolean(microsoftConnection);
-  const microsoftLabel = microsoftConnected
-    ? `Microsoft verbunden${microsoftConnection?.account_email ? ` · ${microsoftConnection.account_email}` : ""}`
-    : "Microsoft verbinden";
-
   const params = await searchParams;
   const rawAgent = Array.isArray(params.agent) ? params.agent[0] : params.agent;
   const selectedAgentId = isAgentId(rawAgent) ? rawAgent : "luna";
@@ -89,12 +69,6 @@ export default async function Home({
         </header>
 
         <p className="luna-status"><span /> Bereit</p>
-
-        <div className="luna-integrations">
-          <a className={`luna-microsoft-connect${microsoftConnected ? " connected" : ""}`} href="/api/integrations/microsoft/start">
-            {microsoftLabel}
-          </a>
-        </div>
 
         <section id="workspace" className="luna-workspace" aria-label="LUNA Arbeitsbereich">
           <a className="luna-work-card primary" href="#chat">

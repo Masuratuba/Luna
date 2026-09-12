@@ -1,18 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isLoginBypassed } from "./mode";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  if (isLoginBypassed()) return supabaseResponse;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Never let missing Vercel environment variables crash the routing layer.
-  if (!supabaseUrl || !supabaseKey) {
-    return supabaseResponse;
-  }
+  if (!supabaseUrl || !supabaseKey) return supabaseResponse;
 
   try {
     const supabase = createServerClient(supabaseUrl, supabaseKey, {
@@ -24,13 +24,10 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
-
           supabaseResponse = NextResponse.next({ request });
-
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options);
           });
-
           Object.entries(headers ?? {}).forEach(([key, value]) => {
             supabaseResponse.headers.set(key, value);
           });
@@ -51,7 +48,6 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
   } catch {
-    // Authentication errors must not crash Vercel's routing layer.
     return supabaseResponse;
   }
 
