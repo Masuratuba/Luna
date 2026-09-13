@@ -10,7 +10,7 @@ import { ExternalTrustedAuthAdapter } from "../../../../lib/luna/trusted-auth";
 import { randomUUID } from "node:crypto";
 
 async function checkTable(supabase: NonNullable<ReturnType<typeof createSupabaseServiceClient>>, table: string) {
-  const { error } = await supabase.from(table).select("id").limit(1);
+  const { error } = await (supabase as any).from(table).select("id").limit(1);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
