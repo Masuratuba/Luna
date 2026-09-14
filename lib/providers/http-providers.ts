@@ -38,6 +38,23 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
 
   for (const item of output) {
     if (!item || typeof item !== "object") continue;
+
+    if ("type" in item && item.type === "web_search_call" && "action" in item && item.action && typeof item.action === "object") {
+      const action = item.action as { sources?: unknown };
+      if (Array.isArray(action.sources)) {
+        for (const source of action.sources) {
+          if (!source || typeof source !== "object") continue;
+          const typedSource = source as WebCitation;
+          const url = typeof typedSource.url === "string" ? typedSource.url.trim() : "";
+          if (!url || !isHttpUrl(url) || seen.has(url)) continue;
+          const title = typeof typedSource.title === "string" && typedSource.title.trim() ? typedSource.title.trim() : url;
+          seen.add(url);
+          results.push({ title, url, snippet: text });
+          if (results.length >= limit) return results;
+        }
+      }
+    }
+
     const content = "content" in item && Array.isArray(item.content) ? item.content : [];
     for (const part of content) {
       if (!part || typeof part !== "object" || !("annotations" in part) || !Array.isArray(part.annotations)) continue;
@@ -97,7 +114,14 @@ export class HttpSearchProvider implements SearchProvider {
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
     const input = `You are LUNA's live research engine. Use the live web search tool before answering. Do not answer from general knowledge and do not claim that live web access is unavailable. Find current, concrete information for the user's request. For travel requests, search actual current transport providers and booking/search pages, compare the requested date, route, transport modes and price where available, and distinguish exact current fares from estimates. Prefer official provider sources. Return the researched findings, including source URLs in the text when available. If an exact price cannot be found, state exactly which data point is unavailable rather than saying live research is unavailable.\n\nUser request: ${query}`;
-    const response = await getOpenAI().responses.create({ model, input, tools: [{ type: "web_search", search_context_size: "high" }], store: false });
+    const response = await getOpenAI().responses.create({
+      model,
+      input,
+      tools: [{ type: "web_search", search_context_size: "high" }],
+      tool_choice: "required",
+      include: ["web_search_call.action.sources"],
+      store: false,
+    });
     return extractSearchResults(response, limit);
   }
 }
