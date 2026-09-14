@@ -95,9 +95,11 @@ export class HttpSearchProvider implements SearchProvider {
     if (!query) throw new Error("SEARCH_QUERY_REQUIRED");
     const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
-    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
+    // Search must use a model with documented Responses API web-search support.
+    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || "gpt-5.6-luna";
     const input = `You are LUNA's live research engine. Use the live web search tool before answering. Do not answer from general knowledge and do not claim that live web access is unavailable. Find current, concrete information for the user's request. For travel requests, search actual current transport providers and booking/search pages, compare the requested date, route, transport modes and price where available, and distinguish exact current fares from estimates. Prefer official provider sources. Return the researched findings, including source URLs in the text when available. If an exact price cannot be found, state exactly which data point is unavailable rather than saying live research is unavailable.\n\nUser request: ${query}`;
 
+    let firstError: unknown = null;
     try {
       const response = await getOpenAI().responses.create({
         model,
@@ -108,21 +110,35 @@ export class HttpSearchProvider implements SearchProvider {
         store: false,
       });
       return extractSearchResults(response, limit);
-    } catch (firstError: unknown) {
-      // Some API/SDK combinations can reject the optional source expansion. Retry the same
-      // forced-search request without that optional response expansion before failing.
-      try {
-        const response = await getOpenAI().responses.create({
-          model,
-          input,
-          tools: [{ type: "web_search", search_context_size: "high" }],
-          tool_choice: "required",
-          store: false,
-        });
-        return extractSearchResults(response, limit);
-      } catch {
-        throw firstError;
-      }
+    } catch (error: unknown) {
+      firstError = error;
+    }
+
+    // Retry without optional source expansion for SDK/API compatibility.
+    try {
+      const response = await getOpenAI().responses.create({
+        model,
+        input,
+        tools: [{ type: "web_search", search_context_size: "high" }],
+        tool_choice: "required",
+        store: false,
+      });
+      return extractSearchResults(response, limit);
+    } catch {
+      // Continue to the legacy hosted web-search tool as a compatibility fallback.
+    }
+
+    try {
+      const response = await getOpenAI().responses.create({
+        model,
+        input,
+        tools: [{ type: "web_search_preview", search_context_size: "high" }],
+        store: false,
+      });
+      return extractSearchResults(response, limit);
+    } catch (fallbackError: unknown) {
+      // Preserve the first API error because it is normally the most diagnostic one.
+      throw firstError ?? fallbackError;
     }
   }
 }
