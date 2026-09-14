@@ -1,7 +1,7 @@
 export type ProviderHealth = "ready" | "disabled" | "error";
 
 export type SearchRequest = Readonly<{ query: string; limit?: number }>;
-export type SearchResult = Readonly<{ title: string; url: string; snippet?: string }>;
+export type SearchResult = Readonly<{ title: string; url?: string; snippet?: string }>;
 export interface SearchProvider {
   readonly name: string;
   search(request: SearchRequest): Promise<readonly SearchResult[]>;
