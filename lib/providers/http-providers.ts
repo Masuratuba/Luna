@@ -57,6 +57,10 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
+  if (!results.length && text) {
+    return [{ title: "OpenAI Web-Recherche", snippet: text }];
+  }
+
   return results;
 }
 
