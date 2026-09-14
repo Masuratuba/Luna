@@ -41,9 +41,9 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
   for (const item of output) {
     if (!item || typeof item !== "object") continue;
 
-    if ("type" in item && item.type === "web_search_call" && "action" in item && item.action && typeof item.action === "object") {
-      const action = item.action as { sources?: unknown };
-      if (Array.isArray(action.sources)) {
+    if ("type" in item && item.type === "web_search_call") {
+      const action = "action" in item && item.action && typeof item.action === "object" ? item.action as { sources?: unknown } : undefined;
+      if (action && Array.isArray(action.sources)) {
         for (const source of action.sources) {
           if (!source || typeof source !== "object") continue;
           const typedSource = source as WebCitation;
@@ -83,8 +83,12 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
 
   // A successful web-search response without exposed source metadata is still a successful
   // research result. The route can pass the researched text to LUNA rather than reporting failure.
-  if (!results.length && text) return [{ title: "OpenAI Web-Recherche", snippet: text }];
+  if (text) return [{ title: "OpenAI Web-Recherche", snippet: text }];
   return results;
+}
+
+function hasWebSearchCall(response: SearchOutput): boolean {
+  return Array.isArray(response.output) && response.output.some((item) => item && typeof item === "object" && "type" in item && item.type === "web_search_call");
 }
 
 export class HttpSearchProvider implements SearchProvider {
@@ -95,50 +99,41 @@ export class HttpSearchProvider implements SearchProvider {
     if (!query) throw new Error("SEARCH_QUERY_REQUIRED");
     const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
-    // Search must use a model with documented Responses API web-search support.
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || "gpt-5.6-luna";
-    const input = `You are LUNA's live research engine. Use the live web search tool before answering. Do not answer from general knowledge and do not claim that live web access is unavailable. Find current, concrete information for the user's request. For travel requests, search actual current transport providers and booking/search pages, compare the requested date, route, transport modes and price where available, and distinguish exact current fares from estimates. Prefer official provider sources. Return the researched findings, including source URLs in the text when available. If an exact price cannot be found, state exactly which data point is unavailable rather than saying live research is unavailable.\n\nUser request: ${query}`;
+    const input = `You are LUNA's live research engine. You MUST use the web search tool before answering. Do not answer from general knowledge. Search current web sources and use the retrieved information. For travel requests, search actual current transport providers and booking/search pages for the requested date, route, transport modes and prices where available. Prefer official provider sources. Distinguish exact current fares from estimates. Return researched findings with source URLs when available.\n\nUser request: ${query}`;
 
-    let firstError: unknown = null;
     try {
+      // Use the current documented Responses API web-search pattern. The search tool is the
+      // only available tool, and the instruction explicitly requires using it; this avoids
+      // the unreliable `tool_choice: required` path that can hang/fail for hosted search.
       const response = await getOpenAI().responses.create({
         model,
         input,
         tools: [{ type: "web_search", search_context_size: "high" }],
-        tool_choice: "required",
+        tool_choice: "auto",
         include: ["web_search_call.action.sources"],
         store: false,
       });
+
+      if (!hasWebSearchCall(response)) throw new Error("SEARCH_TOOL_NOT_USED");
       return extractSearchResults(response, limit);
     } catch (error: unknown) {
-      firstError = error;
-    }
-
-    // Retry without optional source expansion for SDK/API compatibility.
-    try {
-      const response = await getOpenAI().responses.create({
-        model,
-        input,
-        tools: [{ type: "web_search", search_context_size: "high" }],
-        tool_choice: "required",
-        store: false,
-      });
-      return extractSearchResults(response, limit);
-    } catch {
-      // Continue to the legacy hosted web-search tool as a compatibility fallback.
-    }
-
-    try {
-      const response = await getOpenAI().responses.create({
-        model,
-        input,
-        tools: [{ type: "web_search_preview", search_context_size: "high" }],
-        store: false,
-      });
-      return extractSearchResults(response, limit);
-    } catch (fallbackError: unknown) {
-      // Preserve the first API error because it is normally the most diagnostic one.
-      throw firstError ?? fallbackError;
+      // Retry once without optional source expansion. A search call with usable output is still
+      // valid even when source metadata cannot be expanded by the installed SDK/API combination.
+      try {
+        const response = await getOpenAI().responses.create({
+          model,
+          input,
+          tools: [{ type: "web_search", search_context_size: "high" }],
+          tool_choice: "auto",
+          store: false,
+        });
+        if (!hasWebSearchCall(response)) throw new Error("SEARCH_TOOL_NOT_USED");
+        return extractSearchResults(response, limit);
+      } catch (retryError: unknown) {
+        const message = retryError instanceof Error ? retryError.message : "search execution failed";
+        throw new Error(`SEARCH_PROVIDER_FAILED: ${message}`);
+      }
     }
   }
 }
