@@ -44,14 +44,19 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
       for (const annotation of part.annotations) {
         if (!annotation || typeof annotation !== "object") continue;
         if (!("type" in annotation) || annotation.type !== "url_citation") continue;
-        const citation = "url_citation" in annotation ? annotation.url_citation : undefined;
-        if (!citation || typeof citation !== "object") continue;
-        const typedCitation = citation as WebCitation;
-        const url = typeof typedCitation.url === "string" ? typedCitation.url.trim() : "";
+        const direct = annotation as WebCitation;
+        const nested = "url_citation" in annotation && annotation.url_citation && typeof annotation.url_citation === "object"
+          ? annotation.url_citation as WebCitation
+          : undefined;
+        const url = typeof direct.url === "string" ? direct.url.trim() : typeof nested?.url === "string" ? nested.url.trim() : "";
         if (!url || !isHttpUrl(url) || seen.has(url)) continue;
-        const title = typeof typedCitation.title === "string" && typedCitation.title.trim() ? typedCitation.title.trim() : url;
+        const titleValue = typeof direct.title === "string" && direct.title.trim()
+          ? direct.title.trim()
+          : typeof nested?.title === "string" && nested.title.trim()
+            ? nested.title.trim()
+            : url;
         seen.add(url);
-        results.push({ title, url, snippet: text });
+        results.push({ title: titleValue, url, snippet: text });
         if (results.length >= limit) return results;
       }
     }
@@ -91,7 +96,8 @@ export class HttpSearchProvider implements SearchProvider {
     const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
-    const response = await getOpenAI().responses.create({ model, input: query, tools: [{ type: "web_search", search_context_size: "high" }], store: false });
+    const input = `Use live web search for this request. Do not answer from general knowledge. Find current, concrete information and prefer official transport/provider sources. Include current prices, dates, availability or schedules when the request asks for them. Return the researched answer with source citations.\n\nUser request: ${query}`;
+    const response = await getOpenAI().responses.create({ model, input, tools: [{ type: "web_search", search_context_size: "high" }], store: false });
     return extractSearchResults(response, limit);
   }
 }
