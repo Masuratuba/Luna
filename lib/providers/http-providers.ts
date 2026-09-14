@@ -79,10 +79,7 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
-  if (!results.length && text) {
-    return [{ title: "OpenAI Web-Recherche", snippet: text }];
-  }
-
+  if (!results.length && text) return [{ title: "OpenAI Web-Recherche", snippet: text }];
   return results;
 }
 
@@ -114,15 +111,33 @@ export class HttpSearchProvider implements SearchProvider {
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
     const input = `You are LUNA's live research engine. Use the live web search tool before answering. Do not answer from general knowledge and do not claim that live web access is unavailable. Find current, concrete information for the user's request. For travel requests, search actual current transport providers and booking/search pages, compare the requested date, route, transport modes and price where available, and distinguish exact current fares from estimates. Prefer official provider sources. Return the researched findings, including source URLs in the text when available. If an exact price cannot be found, state exactly which data point is unavailable rather than saying live research is unavailable.\n\nUser request: ${query}`;
-    const response = await getOpenAI().responses.create({
-      model,
-      input,
-      tools: [{ type: "web_search", search_context_size: "high" }],
-      tool_choice: "required",
-      include: ["web_search_call.action.sources"],
-      store: false,
-    });
-    return extractSearchResults(response, limit);
+
+    try {
+      const response = await getOpenAI().responses.create({
+        model,
+        input,
+        tools: [{ type: "web_search", search_context_size: "high" }],
+        tool_choice: "required",
+        include: ["web_search_call.action.sources"],
+        store: false,
+      });
+      return extractSearchResults(response, limit);
+    } catch (firstError: unknown) {
+      // Some OpenAI SDK/API combinations may reject the optional source expansion even though web search itself is available.
+      // Retry the same forced-search request without that optional response expansion before failing the research action.
+      try {
+        const response = await getOpenAI().responses.create({
+          model,
+          input,
+          tools: [{ type: "web_search", search_context_size: "high" }],
+          tool_choice: "required",
+          store: false,
+        });
+        return extractSearchResults(response, limit);
+      } catch {
+        throw firstError;
+      }
+    }
   }
 }
 
