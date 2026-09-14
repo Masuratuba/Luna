@@ -33,9 +33,9 @@ export type ActionExecutionResult = {
 function requiredScope(action: LunaAction): string | null {
   if (action.type === "tool") {
     const tool = String(action.input.tool ?? "").trim();
-    // Research policy grants the `search` capability. The executor must
-    // check that same scope; `search:read` is not issued by the verifier.
-    if (tool === "search") return "search";
+    // Keep this aligned with Checkpoint 60 and the normal authenticated-user scope.
+    // Development/admin identities may still use luna:* as a trusted wildcard.
+    if (tool === "search") return "search:read";
     if (tool === "memory.read") return "memory:read";
     if (tool === "memory.write") return "memory:write";
     if (tool === "task.create") return "task:create";
