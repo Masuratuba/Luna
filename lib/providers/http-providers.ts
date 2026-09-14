@@ -96,7 +96,7 @@ export class HttpSearchProvider implements SearchProvider {
     const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
     const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna";
-    const input = `Use live web search for this request. Do not answer from general knowledge. Find current, concrete information and prefer official transport/provider sources. Include current prices, dates, availability or schedules when the request asks for them. Return the researched answer with source citations.\n\nUser request: ${query}`;
+    const input = `You are LUNA's live research engine. Use the live web search tool before answering. Do not answer from general knowledge and do not claim that live web access is unavailable. Find current, concrete information for the user's request. For travel requests, search actual current transport providers and booking/search pages, compare the requested date, route, transport modes and price where available, and distinguish exact current fares from estimates. Prefer official provider sources. Return the researched findings, including source URLs in the text when available. If an exact price cannot be found, state exactly which data point is unavailable rather than saying live research is unavailable.\n\nUser request: ${query}`;
     const response = await getOpenAI().responses.create({ model, input, tools: [{ type: "web_search", search_context_size: "high" }], store: false });
     return extractSearchResults(response, limit);
   }
