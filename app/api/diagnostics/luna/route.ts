@@ -9,11 +9,6 @@ import { evaluateGuard } from "../../../../lib/luna/guard";
 import { ExternalTrustedAuthAdapter } from "../../../../lib/luna/trusted-auth";
 import { randomUUID } from "node:crypto";
 
-async function checkTable(supabase: NonNullable<ReturnType<typeof createSupabaseServiceClient>>, table: string) {
-  const { error } = await (supabase as any).from(table).select("id").limit(1);
-  return error ? { ok: false, error: error.message } : { ok: true };
-}
-
 export async function GET() {
   if (!isLoginBypassed()) return new NextResponse(null, { status: 404 });
 
@@ -28,7 +23,7 @@ export async function GET() {
   const steps = result.steps as Record<string, unknown>;
 
   try {
-    const supabase = createSupabaseServiceClient();
+    const supabase = createSupabaseServiceClient() as any;
     if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
     const { data: users, error: usersError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
@@ -52,7 +47,8 @@ export async function GET() {
     if (!identity) throw new Error("AUTH_IDENTITY_INVALID");
 
     for (const table of ["profiles", "conversations", "messages", "memories", "projects", "tasks", "tool_connections", "luna_actions", "luna_events", "luna_audit_log"]) {
-      steps[`table_${table}`] = await checkTable(supabase, table);
+      const { error } = await supabase.from(table).select("id").limit(1);
+      steps[`table_${table}`] = error ? { ok: false, error: error.message } : { ok: true };
     }
 
     const probe = `LUNA-DIAGNOSTIC-${randomUUID()}`;
@@ -83,12 +79,12 @@ export async function GET() {
     steps.taskWrite = taskError ? { ok: false, error: taskError.message } : { ok: Boolean(task?.id) };
     if (taskError) throw taskError;
 
-    const decision = routeMessage("Merke dir: LUNA-DIAGNOSTIC-MEMORY");
-    const agent = selectAgent("Merke dir: LUNA-DIAGNOSTIC-MEMORY", decision);
-    const dispatch = dispatchAgent({ agent, task: "Merke dir: LUNA-DIAGNOSTIC-MEMORY" });
+    const decision = routeMessage(memoryText);
+    const agent = selectAgent(memoryText, decision);
+    const dispatch = dispatchAgent({ agent, task: memoryText });
     steps.agent = { ok: Boolean(agent), selected: agent, dispatchApproved: dispatch.approved, reason: dispatch.reason };
 
-    const guard = evaluateGuard({ userId, message: "Merke dir: LUNA-DIAGNOSTIC-MEMORY", decision, role: "admin", trustedAdmin: identity });
+    const guard = evaluateGuard({ userId, message: memoryText, decision, role: "admin", trustedAdmin: identity });
     steps.guard = { ok: guard.allowed, risk: guard.risk, reason: guard.reason };
 
     const { data: recentMessages, error: messagesError } = await supabase.from("messages").select("role, content").eq("conversation_id", conversationId).eq("user_id", userId).order("created_at", { ascending: false }).limit(20);
