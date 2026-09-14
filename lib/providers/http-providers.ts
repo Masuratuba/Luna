@@ -3,7 +3,9 @@ import { getOpenAI } from "../openai";
 import { validateAnalyticsResult } from "./analytics-validation";
 import { validateCommerceProducts, validatePublishResult } from "./commerce-validation";
 
-const PROVIDER_TIMEOUT_MS = 15_000;
+// Web search can legitimately take longer than an ordinary API request because the model
+// performs external retrieval before returning its answer. Keep a bounded but realistic timeout.
+const PROVIDER_TIMEOUT_MS = 45_000;
 const DEFAULT_SEARCH_LIMIT = 5;
 const MAX_SEARCH_LIMIT = 10;
 
@@ -79,31 +81,15 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
+  // A successful web-search response without exposed source metadata is still a successful
+  // research result. The route can pass the researched text to LUNA rather than reporting failure.
   if (!results.length && text) return [{ title: "OpenAI Web-Recherche", snippet: text }];
   return results;
 }
 
-async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
-    });
-  } catch (error: unknown) {
-    if (error instanceof DOMException && error.name === "TimeoutError") throw new Error("PROVIDER_REQUEST_TIMEOUT");
-    throw error;
-  }
-  if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().includes("application/json")) throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
-  return response.json() as Promise<T>;
-}
-
 export class HttpSearchProvider implements SearchProvider {
   readonly name = "openai-web-search";
+
   async search(request: SearchRequest): Promise<readonly SearchResult[]> {
     const query = request.query.trim();
     if (!query) throw new Error("SEARCH_QUERY_REQUIRED");
@@ -123,8 +109,8 @@ export class HttpSearchProvider implements SearchProvider {
       });
       return extractSearchResults(response, limit);
     } catch (firstError: unknown) {
-      // Some OpenAI SDK/API combinations may reject the optional source expansion even though web search itself is available.
-      // Retry the same forced-search request without that optional response expansion before failing the research action.
+      // Some API/SDK combinations can reject the optional source expansion. Retry the same
+      // forced-search request without that optional response expansion before failing.
       try {
         const response = await getOpenAI().responses.create({
           model,
@@ -139,6 +125,19 @@ export class HttpSearchProvider implements SearchProvider {
       }
     }
   }
+}
+
+async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
+  return response.json() as Promise<T>;
 }
 
 export class HttpAnalyticsProvider implements AnalyticsProvider {
