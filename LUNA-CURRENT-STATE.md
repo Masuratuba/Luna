@@ -1,6 +1,6 @@
 # LUNA — CURRENT STATE
 
-Last updated: 2026-09-14
+Last updated: 2026-09-15
 
 ## Purpose of this file
 This is the handoff file for continuing LUNA when a ChatGPT conversation becomes too long. Read this file before making changes. Do not restart old work from memory or guess the state.
@@ -8,53 +8,46 @@ This is the handoff file for continuing LUNA when a ChatGPT conversation becomes
 ## Current project state
 - Project: LUNA
 - Repository: `Masuratuba/Luna`
-- Production: `https://luna-luna81.vercel.app/`
+- Current `main` after the research fixes is advancing from the previously deployed `7923a9fa9a65e99d97d90a7ba0c3227e106f4a59`.
+- Production URL recorded for the project: `https://luna-luna81.vercel.app/`
 - UI is intentionally frozen. Do not redesign or alter the pre-Voice UI unless explicitly requested.
 - Microsoft OAuth is not part of the current development path.
 - Login-bypass/development mode is currently used for the owner's testing.
 
-## Current active problem
-The Research Agent still returns:
+## Active problem and root cause found
+The Research Agent was still returning:
 `Ich konnte die Recherche gerade nicht verlässlich ausführen.`
 for requests such as:
 `Von Tarvisio nach Frankfurt am 20. September 2026, möglichst günstig, egal ob Zug oder Bus.`
 
-The problem is NOT solved yet. Do not ask the user to keep repeatedly testing while the cause is unknown.
+The previously assumed timeout problem was not the complete cause.
 
-## Research path already verified
+The current Research provider had been switched to the dedicated Chat Completions search model `gpt-5-search-api`, but the actual call omitted the required `web_search_options: {}` parameter from the OpenAI search example. It also did not pass an explicit 45-second SDK timeout for the search call and discarded the Chat Completions `url_citation` annotations, so source URLs were not propagated into LUNA.
+
+OpenAI's current documentation confirms that `gpt-5-search-api` is the Chat Completions web-search model and shows `web_search_options: {}` on the call. It also states that the response contains `message.content` plus URL citation annotations.
+
+## Research path verified
 1. Travel request routes to the Research agent.
 2. Research agent policy includes the `search` capability.
 3. Guardian permits read-only search.
 4. Search provider is registered.
-5. OpenAI Responses API is used with `web_search` and forced tool use.
-6. Provider has a 45-second bounded timeout and retry without optional source expansion.
-7. GPT-5.6 Luna supports Web Search according to current OpenAI API model documentation.
+5. The provider uses `gpt-5-search-api` with explicit `web_search_options: {}`.
+6. Search requests now have an explicit 45-second timeout and `maxRetries: 0` so the bound is real rather than multiplied by automatic retries.
+7. Chat-search URL citations are extracted and passed into the Research result instead of being discarded.
+8. The existing executor scope remains aligned with Checkpoint 60: normal users use `search:read`; trusted development/admin identities may use `luna:*`.
 
-## Important scope consistency
-Checkpoint 60 defines:
-`search -> search:read`
-Normal authenticated users receive `search:read`.
-Development/admin identities may use `luna:*`.
-The executor had temporarily been changed to require `search`; this was inconsistent with Checkpoint 60. Commit `0291d728ed5bd009aa0be710762df8ca05c16c65` restores `search:read` for the executor.
+## Fixes applied in the current work
+- `d8250e3c867f7954c0034eb40e99a5cb4ec78107` — fixed live search invocation, added `web_search_options`, explicit timeout/retry bound, and Chat Completions citation extraction.
+- `dd4d90d0e24078a2dece612943f8d0e97d6ee64a` — added regression tests for Chat Completions citation extraction.
+- `14222541af98cc95d58155d1b64be7759c34e35c` — changed the test-only search diagnostic to exercise the real `HttpSearchProvider` instead of a separate Responses API path.
 
-## Latest research-provider change
-Commit `b41e64471186e751992eb92bc929dbf91d1383ee`:
-- search timeout increased from 15s to 45s
-- retry retained when optional source expansion fails
-- successful output text can still be returned when source metadata is absent
-Vercel reported SUCCESS for that commit, but the user's real test still failed. Therefore timeout was not the complete fix.
+## Required verification before the final user test
+Do not claim the Research path works just because GitHub accepts the commit or Vercel says Ready.
 
-## Next required work — do this before asking for another user test
-Do NOT change UI.
-Do NOT keep changing prompts blindly.
-Do NOT claim the research path works just because Vercel builds.
-
-1. Expose the exact runtime error from the Research provider in a test-only diagnostic path (sanitized: no API key, tokens, or personal data).
-2. Run that diagnostic against the deployed environment or otherwise inspect the actual OpenAI error.
-3. Determine whether the failure is caused by API/tool invocation, model/tool compatibility, environment configuration, or provider response parsing.
-4. Fix the actual root cause.
-5. Re-check the complete path: router -> agent policy -> Guardian -> executor scope -> provider -> result extraction -> LUNA response.
-6. Only then ask the user for one final real-world test.
+1. Wait for the new Vercel deployment to show `Ready` for the newest `main` commit.
+2. Run the test-only diagnostic endpoint in the deployed environment and confirm `ok: true`, a non-zero result count, and usable source URLs when the provider returns citations.
+3. Confirm the normal chat path uses the same provider and that the Research Agent no longer falls back to the generic failure message.
+4. Only after those checks, ask the user for one final real-world research request.
 
 ## Continuity rule
 If a new ChatGPT conversation starts with LUNA work, first read `LUNA-CURRENT-STATE.md`, then continue from the active problem above. Do not make the user explain the project again.
