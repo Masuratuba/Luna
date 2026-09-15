@@ -3,8 +3,6 @@ import { getOpenAI } from "../openai";
 import { validateAnalyticsResult } from "./analytics-validation";
 import { validateCommerceProducts, validatePublishResult } from "./commerce-validation";
 
-// Web search can legitimately take longer than an ordinary API request because the model
-// performs external retrieval before returning its answer. Keep a bounded but realistic timeout.
 const PROVIDER_TIMEOUT_MS = 45_000;
 const DEFAULT_SEARCH_LIMIT = 5;
 const MAX_SEARCH_LIMIT = 10;
@@ -81,14 +79,8 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
-  // A successful web-search response without exposed source metadata is still a successful
-  // research result. The route can pass the researched text to LUNA rather than reporting failure.
   if (text) return [{ title: "OpenAI Web-Recherche", snippet: text }];
   return results;
-}
-
-function hasWebSearchCall(response: SearchOutput): boolean {
-  return Array.isArray(response.output) && response.output.some((item) => item && typeof item === "object" && "type" in item && item.type === "web_search_call");
 }
 
 export class HttpSearchProvider implements SearchProvider {
@@ -99,41 +91,22 @@ export class HttpSearchProvider implements SearchProvider {
     if (!query) throw new Error("SEARCH_QUERY_REQUIRED");
     const requestedLimit = Number.isFinite(request.limit) ? Math.floor(request.limit as number) : DEFAULT_SEARCH_LIMIT;
     const limit = Math.min(MAX_SEARCH_LIMIT, Math.max(1, requestedLimit));
-    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || "gpt-5.6-luna";
-    const input = `You are LUNA's live research engine. You MUST use the web search tool before answering. Do not answer from general knowledge. Search current web sources and use the retrieved information. For travel requests, search actual current transport providers and booking/search pages for the requested date, route, transport modes and prices where available. Prefer official provider sources. Distinguish exact current fares from estimates. Return researched findings with source URLs when available.\n\nUser request: ${query}`;
+    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || "gpt-5-search-api";
+    const input = `Search the live web and answer this user request with current, concrete information. This is a research operation, not a general-knowledge answer. For travel requests, check actual current transport providers and booking/search pages for the requested date, route, transport modes and prices where available. Compare the cheapest realistic options and clearly distinguish exact fares from estimates. Prefer official provider sources. Include source URLs when available.\n\nUser request: ${query}`;
 
     try {
-      // Use the current documented Responses API web-search pattern. The search tool is the
-      // only available tool, and the instruction explicitly requires using it; this avoids
-      // the unreliable `tool_choice: required` path that can hang/fail for hosted search.
-      const response = await getOpenAI().responses.create({
+      // The dedicated OpenAI Search API always performs web retrieval. This avoids relying on
+      // Responses API tool-choice behavior for a task where live search is mandatory.
+      const response = await getOpenAI().chat.completions.create({
         model,
-        input,
-        tools: [{ type: "web_search", search_context_size: "high" }],
-        tool_choice: "auto",
-        include: ["web_search_call.action.sources"],
-        store: false,
+        messages: [{ role: "user", content: input }],
       });
-
-      if (!hasWebSearchCall(response)) throw new Error("SEARCH_TOOL_NOT_USED");
-      return extractSearchResults(response, limit);
+      const text = response.choices[0]?.message?.content?.trim() ?? "";
+      if (!text) throw new Error("SEARCH_EMPTY_RESULT");
+      return [{ title: "OpenAI Web-Recherche", snippet: text }].slice(0, limit);
     } catch (error: unknown) {
-      // Retry once without optional source expansion. A search call with usable output is still
-      // valid even when source metadata cannot be expanded by the installed SDK/API combination.
-      try {
-        const response = await getOpenAI().responses.create({
-          model,
-          input,
-          tools: [{ type: "web_search", search_context_size: "high" }],
-          tool_choice: "auto",
-          store: false,
-        });
-        if (!hasWebSearchCall(response)) throw new Error("SEARCH_TOOL_NOT_USED");
-        return extractSearchResults(response, limit);
-      } catch (retryError: unknown) {
-        const message = retryError instanceof Error ? retryError.message : "search execution failed";
-        throw new Error(`SEARCH_PROVIDER_FAILED: ${message}`);
-      }
+      const message = error instanceof Error ? error.message : "search execution failed";
+      throw new Error(`SEARCH_PROVIDER_FAILED: ${message}`);
     }
   }
 }
