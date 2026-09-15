@@ -80,7 +80,8 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
     }
   }
 
-  if (text) return [{ title: "OpenAI Web-Recherche", snippet: text }];
+  // Do not turn an uncited model answer into a fake "source". Research results must
+  // remain attributable; the caller will fail closed when no verifiable source exists.
   return results;
 }
 
@@ -122,9 +123,6 @@ export class HttpSearchProvider implements SearchProvider {
     const input = `Search the live web and answer this user request with current, concrete information. This is a research operation, not a general-knowledge answer. For travel requests, check actual current transport providers and booking/search pages for the requested date, route, transport modes and prices where available. Compare the cheapest realistic options and clearly distinguish exact fares from estimates. Prefer official provider sources. Include source URLs when available.\n\nUser request: ${query}`;
 
     try {
-      // gpt-5-search-api is the dedicated Chat Completions search model. The search option is
-      // required to use the web-search integration, and the request gets an explicit bounded
-      // timeout so a slow live-search call cannot hang the Research Agent indefinitely.
       const response = await getOpenAI().chat.completions.create({
         model,
         web_search_options: {},
@@ -145,16 +143,22 @@ export class HttpSearchProvider implements SearchProvider {
 }
 
 async function postJson<T>(url: string, body: unknown, apiKey?: string): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
-  });
-  if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().includes("application/json")) throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
-  return response.json() as Promise<T>;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error(`Provider request failed: ${response.status}`);
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) throw new Error("PROVIDER_INVALID_CONTENT_TYPE");
+    return response.json() as Promise<T>;
+  } catch (error: unknown) {
+    const name = error instanceof Error ? error.name : "";
+    if (name === "TimeoutError" || name === "AbortError") throw new Error("PROVIDER_REQUEST_TIMEOUT");
+    throw error;
+  }
 }
 
 export class HttpAnalyticsProvider implements AnalyticsProvider {
