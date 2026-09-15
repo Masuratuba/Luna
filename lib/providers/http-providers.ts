@@ -108,7 +108,8 @@ export function extractChatSearchResults(message: ChatSearchMessage, limit: numb
     if (results.length >= limit) return results;
   }
 
-  return text ? [{ title: "OpenAI Web-Recherche", snippet: text }] : results;
+  // Fail closed: a model response without a verifiable URL is not a research result.
+  return results;
 }
 
 export class HttpSearchProvider implements SearchProvider {
