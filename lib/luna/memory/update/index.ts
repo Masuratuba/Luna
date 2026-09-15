@@ -37,7 +37,7 @@ export async function updateMemory(
     .from("memories")
     .select("id, content")
     .eq("user_id", userId)
-    .ilike("content", `%${escapeLike(parsed.target)}%`, "\\")
+    .ilike("content", `%${escapeLike(parsed.target)}%`)
     .limit(5);
 
   if (lookupError) throw lookupError;
