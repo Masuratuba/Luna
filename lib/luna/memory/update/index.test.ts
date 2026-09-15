@@ -101,4 +101,26 @@ describe("isolated D2 memory update", () => {
     });
     assert.equal(updated, false);
   });
+
+  it("does not update when multiple memories match the target", async () => {
+    let updated = false;
+    const supabase = {
+      from() {
+        return {
+          select() {
+            return { eq() { return { ilike() { return { limit: async () => ({ data: [
+              { id: "memory-1", content: "Lieblingsfarbe ist Blau" },
+              { id: "memory-2", content: "Lieblingsfarbe ist Grün" },
+            ], error: null }) }; } }; };
+          },
+          update() { updated = true; throw new Error("update must not be called"); },
+        };
+      },
+    };
+    assert.deepEqual(await updateMemory(supabase as never, "user-a", "Ändere Lieblingsfarbe zu Rot"), {
+      ok: false,
+      reason: "AMBIGUOUS",
+    });
+    assert.equal(updated, false);
+  });
 });
