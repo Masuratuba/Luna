@@ -1,4 +1,5 @@
 import { containsSensitiveMemory, normalizeMemory } from "./memory";
+import { forgetMemory } from "./memory/forget";
 
 export type LunaCommand =
   | { kind: "forget"; query: string }
@@ -13,6 +14,7 @@ export function parseLunaCommand(message: string): LunaCommand | null {
   const text = message.trim();
   const lower = text.toLocaleLowerCase("de-DE");
   if (/^luna[, ]+vergiss\s+/i.test(text)) return { kind: "forget", query: text.replace(/^luna[, ]+vergiss\s+/i, "").trim() };
+  if (/^(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)\s+/i.test(text)) return { kind: "forget", query: text.replace(/^(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)\s+/i, "").trim() };
   const update = text.match(/^luna[, ]+aktualisiere\s+(.+?)\s+(?:zu|auf|mit)\s+(.+)$/i);
   if (update) return { kind: "update", query: update[1].trim(), replacement: update[2].trim() };
   if (/^luna[, ]+kontext\s*$/i.test(text) || lower === "kontext") return { kind: "context" };
@@ -25,15 +27,10 @@ export function parseLunaCommand(message: string): LunaCommand | null {
 
 export async function executeLunaCommand(command: LunaCommand, supabase: any, userId: string) {
   if (command.kind === "forget") {
-    const query = command.query.slice(0, 500);
-    if (!query) return { ok: false, status: 400, reply: "Sag mir bitte, was ich vergessen soll." };
-    const { data, error } = await supabase.from("memories").select("id, type, content").eq("user_id", userId).ilike("content", `%${query}%`).limit(20);
-    if (error) throw error;
-    if (!data?.length) return { ok: true, reply: "Ich habe keine passende Erinnerung gefunden." };
-    const ids = data.map((item: { id: string }) => item.id);
-    const { error: deleteError } = await supabase.from("memories").delete().eq("user_id", userId).in("id", ids);
-    if (deleteError) throw deleteError;
-    return { ok: true, reply: `Erledigt. Ich habe ${ids.length} passende Erinnerung${ids.length === 1 ? "" : "en"} gelöscht.`, result: { deleted: data } };
+    const result = await forgetMemory(supabase, userId, `Vergiss ${command.query}`);
+    if (!result.ok && result.reason === "NO_TARGET") return { ok: false, status: 400, reply: "Sag mir bitte, was ich vergessen soll." };
+    if (!result.ok && result.reason === "NOT_FOUND") return { ok: true, reply: "Ich habe keine passende Erinnerung gefunden." };
+    return { ok: true, reply: "Erledigt. Ich habe die passende Erinnerung gelöscht.", result };
   }
 
   if (command.kind === "update") {
