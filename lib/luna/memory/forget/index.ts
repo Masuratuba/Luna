@@ -7,8 +7,11 @@ export type ForgetMemoryResult =
 const FORGET_PREFIX = /^\s*(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+(?:bitte\s+)?(?:dass\s+)?(?:du\s+)?(?:dir\s+)?/i;
 
 export function extractForgetTarget(message: string): string | null {
-  const target = message.replace(FORGET_PREFIX, "").trim().replace(/[.!?]+$/, "").trim();
-  return target ? target.slice(0, 10_000) : null;
+  const normalized = message.trim();
+  const stripped = normalized.replace(/[.!?]+$/, "").trim();
+  const target = stripped.replace(FORGET_PREFIX, "").trim();
+  if (!target || target.toLocaleLowerCase() === stripped.toLocaleLowerCase()) return null;
+  return target.slice(0, 10_000);
 }
 
 export function isForgetMemoryRequest(message: string): boolean {
