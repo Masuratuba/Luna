@@ -3,11 +3,16 @@
 import { useState } from "react";
 import { getLunaAgent, type LunaAgentId } from "../../lib/luna/agents";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Source = { title: string; url: string; snippet?: string };
+type Message = { role: "user" | "assistant"; content: string; sources?: Source[] };
 
 type Props = {
   initialAgentId: LunaAgentId;
 };
+
+function isSafeSourceUrl(url: string) {
+  return /^https?:\/\//i.test(url);
+}
 
 export default function LunaChatSecure({ initialAgentId }: Props) {
   const [agentId] = useState<LunaAgentId>(initialAgentId);
@@ -38,7 +43,10 @@ export default function LunaChatSecure({ initialAgentId }: Props) {
       if (data.conversationId) setConversationId(data.conversationId);
 
       const answer = data.reply ?? [data.error, data.detail].filter(Boolean).join(" — ") ?? "Keine Antwort erhalten.";
-      setMessages((current) => [...current, { role: "assistant", content: answer }]);
+      const sources = Array.isArray(data.sources)
+        ? data.sources.filter((source: Source) => typeof source?.title === "string" && isSafeSourceUrl(source?.url))
+        : [];
+      setMessages((current) => [...current, { role: "assistant", content: answer, sources }]);
     } catch {
       setMessages((current) => [...current, { role: "assistant", content: `Verbindung zu ${agent.name} fehlgeschlagen.` }]);
     } finally {
@@ -54,7 +62,19 @@ export default function LunaChatSecure({ initialAgentId }: Props) {
       </div>
       <div className="luna-messages" aria-live="polite">
         {messages.map((message, index) => (
-          <div className={`luna-message ${message.role}`} key={`${message.role}-${index}`}>{message.content}</div>
+          <div className={`luna-message ${message.role}`} key={`${message.role}-${index}`}>
+            <div>{message.content}</div>
+            {message.sources && message.sources.length > 0 && (
+              <div className="luna-sources" aria-label="Quellen">
+                <strong>Quellen</strong>
+                {message.sources.map((source) => (
+                  <a key={source.url} href={source.url} target="_blank" rel="noreferrer noopener">
+                    {source.title}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
         {loading && <div className="luna-message assistant">{agent.name} denkt …</div>}
       </div>
