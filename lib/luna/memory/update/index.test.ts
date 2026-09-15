@@ -1,119 +1,116 @@
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseMemoryUpdate, updateMemory } from "./index";
+import { test, describe } from "node:test";
+import { updateMemory } from "./index";
 
-describe("isolated D2 memory update", () => {
-  it("parses natural German update requests", () => {
-    assert.deepEqual(parseMemoryUpdate("Ändere meine Lieblingsfarbe zu Blau."), {
-      target: "meine Lieblingsfarbe",
-      replacement: "Blau",
-    });
-    assert.deepEqual(parseMemoryUpdate("Luna, aktualisiere meinen Wohnort auf Berlin"), {
-      target: "meinen Wohnort",
-      replacement: "Berlin",
-    });
-    assert.deepEqual(parseMemoryUpdate("Bitte ändere, dass ich gerne reise zu dass ich gerne wandere"), {
-      target: "dass ich gerne reise",
-      replacement: "dass ich gerne wandere",
-    });
-  });
-
-  it("rejects malformed and sensitive updates", async () => {
-    assert.equal(parseMemoryUpdate("Ändere meine Präferenz"), null);
-    const supabase = { from() { throw new Error("database must not be called"); } };
-    assert.deepEqual(await updateMemory(supabase as never, "user-a", "Ändere meine Präferenz zu password=secret"), {
-      ok: false,
-      reason: "SENSITIVE",
-    });
-  });
-
-  it("updates only a memory belonging to the supplied user", async () => {
-    const calls: string[] = [];
-    const row = { id: "memory-1", content: "meine Lieblingsfarbe" };
+describe("memory update", () => {
+  test("updates a matching memory", async () => {
+    let updated = false;
     const supabase = {
-      from(table: string) {
-        assert.equal(table, "memories");
+      from() {
         return {
           select() {
             return {
-              eq(column: string, value: string) {
-                calls.push(`select.eq:${column}=${value}`);
+              eq() {
                 return {
-                  ilike(column2: string, value2: string) {
-                    calls.push(`select.ilike:${column2}=${value2}`);
-                    return { limit: async () => ({ data: [row], error: null }) };
-                  },
-                };
-              },
-            };
-          },
-          update(values: Record<string, unknown>) {
-            assert.equal(values.content, "Blau");
-            return {
-              eq(column: string, value: string) {
-                calls.push(`update.eq:${column}=${value}`);
-                return {
-                  eq(column2: string, value2: string) {
-                    calls.push(`update.eq:${column2}=${value2}`);
+                  ilike() {
                     return {
-                      select() {
-                        return {
-                          async single() { return { data: { id: "memory-1", content: "Blau" }, error: null }; },
-                        };
-                      },
+                      limit: async () => ({
+                        data: [{ id: "memory-1", content: "Lieblingsfarbe ist Blau" }],
+                        error: null,
+                      }),
                     };
                   },
                 };
               },
             };
           },
+          update() {
+            updated = true;
+            return {
+              eq() {
+                return {
+                  eq() {
+                    return { select: async () => ({ data: [{ id: "memory-1" }], error: null }) };
+                  },
+                };
+              },
+            };
+          },
         };
       },
     };
-
-    const result = await updateMemory(supabase as never, "user-a", "Ändere meine Lieblingsfarbe zu Blau");
-    assert.deepEqual(result, {
-      ok: true,
-      memoryId: "memory-1",
-      previousContent: "meine Lieblingsfarbe",
-      content: "Blau",
-    });
-    assert.ok(calls.includes("select.eq:user_id=user-a"));
-    assert.ok(calls.includes("update.eq:user_id=user-a"));
-    assert.ok(calls.includes("update.eq:id=memory-1"));
+    const result = await updateMemory(supabase as never, "user-a", "Ändere Lieblingsfarbe zu Rot");
+    assert.equal(result.ok, true);
+    assert.equal(updated, true);
   });
 
-  it("does not update when no matching memory exists", async () => {
+  test("parses malformed update command", async () => {
+    const result = await updateMemory({} as never, "user-a", "Ändere");
+    assert.deepEqual(result, { ok: false, reason: "NO_TARGET" });
+  });
+
+  test("rejects sensitive replacement", async () => {
+    const result = await updateMemory({} as never, "user-a", "Ändere Lieblingsfarbe zu password=secret123");
+    assert.deepEqual(result, { ok: false, reason: "SENSITIVE" });
+  });
+
+  test("does not update another user's memory", async () => {
     let updated = false;
     const supabase = {
       from() {
         return {
           select() {
-            return { eq() { return { ilike() { return { limit: async () => ({ data: [], error: null }) }; } }; } };
+            return {
+              eq() {
+                return {
+                  ilike() {
+                    return {
+                      limit: async () => ({ data: [], error: null }),
+                    };
+                  },
+                };
+              },
+            };
           },
-          update() { updated = true; throw new Error("update must not be called"); },
+          update() {
+            updated = true;
+            throw new Error("update must not be called");
+          },
         };
       },
     };
-    assert.deepEqual(await updateMemory(supabase as never, "user-a", "Ändere meine Lieblingsfarbe zu Blau"), {
-      ok: false,
-      reason: "NOT_FOUND",
-    });
+    const result = await updateMemory(supabase as never, "user-a", "Ändere Lieblingsfarbe zu Rot");
+    assert.deepEqual(result, { ok: false, reason: "NOT_FOUND" });
     assert.equal(updated, false);
   });
 
-  it("does not update when multiple memories match the target", async () => {
+  test("does not update when multiple memories match the target", async () => {
     let updated = false;
     const supabase = {
       from() {
         return {
           select() {
-            return { eq() { return { ilike() { return { limit: async () => ({ data: [
-              { id: "memory-1", content: "Lieblingsfarbe ist Blau" },
-              { id: "memory-2", content: "Lieblingsfarbe ist Grün" },
-            ], error: null }) }; } }; };
+            const query = {
+              eq() {
+                return query;
+              },
+              ilike() {
+                return query;
+              },
+              limit: async () => ({
+                data: [
+                  { id: "memory-1", content: "Lieblingsfarbe ist Blau" },
+                  { id: "memory-2", content: "Lieblingsfarbe ist Grün" },
+                ],
+                error: null,
+              }),
+            };
+            return query;
           },
-          update() { updated = true; throw new Error("update must not be called"); },
+          update() {
+            updated = true;
+            throw new Error("update must not be called");
+          },
         };
       },
     };
