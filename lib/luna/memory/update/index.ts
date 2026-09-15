@@ -3,7 +3,7 @@ import { containsSensitiveMemory, normalizeMemory } from "..";
 
 export type UpdateMemoryResult =
   | { ok: true; memoryId: string; previousContent: string; content: string }
-  | { ok: false; reason: "NO_TARGET" | "NO_REPLACEMENT" | "SENSITIVE" | "NOT_FOUND" };
+  | { ok: false; reason: "NO_TARGET" | "NO_REPLACEMENT" | "SENSITIVE" | "NOT_FOUND" | "AMBIGUOUS" };
 
 const UPDATE_PREFIX = /^\s*(?:luna\s*[, ]+)?(?:bitte\s+)?(?:aktualisiere|ändere|aendere|ersetze|korrigiere)(?:\s*,)?\s+/i;
 
@@ -38,6 +38,7 @@ export async function updateMemory(
 
   if (lookupError) throw lookupError;
   if (!matches?.length) return { ok: false, reason: "NOT_FOUND" };
+  if (matches.length > 1) return { ok: false, reason: "AMBIGUOUS" };
 
   const target = matches[0];
   const normalized = normalizeMemory({ type: "fact", content: parsed.replacement, importance: 0.7 });
