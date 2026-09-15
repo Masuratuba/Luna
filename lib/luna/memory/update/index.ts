@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { containsSensitiveMemory, normalizeMemory } from "..";
+import { containsSensitiveMemory, normalizeMemory } from "../memory";
 
 export type UpdateMemoryResult =
   | { ok: true; memoryId: string; previousContent: string; content: string }
