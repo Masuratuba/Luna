@@ -7,6 +7,10 @@ export type UpdateMemoryResult =
 
 const UPDATE_PREFIX = /^\s*(?:luna\s*[, ]+)?(?:bitte\s+)?(?:aktualisiere|ändere|aendere|ersetze|korrigiere)(?:\s*,)?\s+/i;
 
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
 export function parseMemoryUpdate(message: string): { target: string; replacement: string } | null {
   const text = message.trim();
   const match = text.match(UPDATE_PREFIX);
@@ -33,7 +37,7 @@ export async function updateMemory(
     .from("memories")
     .select("id, content")
     .eq("user_id", userId)
-    .ilike("content", `%${parsed.target}%`)
+    .ilike("content", `%${escapeLike(parsed.target)}%`, "\\")
     .limit(5);
 
   if (lookupError) throw lookupError;
