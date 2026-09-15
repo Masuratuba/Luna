@@ -13,8 +13,8 @@ export type LunaCommand =
 export function parseLunaCommand(message: string): LunaCommand | null {
   const text = message.trim();
   const lower = text.toLocaleLowerCase("de-DE");
-  if (/^luna[, ]+vergiss\s+/i.test(text)) return { kind: "forget", query: text.replace(/^luna[, ]+vergiss\s+/i, "").trim() };
-  if (/^(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)\s+/i.test(text)) return { kind: "forget", query: text.replace(/^(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)\s+/i, "").trim() };
+  const forgetPrefix = /^(?:luna[, ]+)?(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+/i;
+  if (forgetPrefix.test(text)) return { kind: "forget", query: text.replace(forgetPrefix, "").trim() };
   const update = text.match(/^luna[, ]+aktualisiere\s+(.+?)\s+(?:zu|auf|mit)\s+(.+)$/i);
   if (update) return { kind: "update", query: update[1].trim(), replacement: update[2].trim() };
   if (/^luna[, ]+kontext\s*$/i.test(text) || lower === "kontext") return { kind: "context" };
