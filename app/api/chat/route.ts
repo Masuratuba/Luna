@@ -15,6 +15,7 @@ import { getLunaAgent } from "../../../lib/luna/agents";
 const MAX_CHAT_MESSAGE_CHARS = 20_000;
 type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
 type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: string };
+type SearchSource = { title: string; url: string; snippet?: string };
 
 async function persistAction(supabase: SupabaseClient, userId: string, action: ReturnType<typeof createAction>, result: ActionResult, risk: string) {
   const status = result.ok ? "completed" : "failed";
@@ -100,6 +101,7 @@ export async function POST(request: Request) {
     let actionId: string | null = null;
     let searchPerformed = false;
     let searchContext = "";
+    let searchSources: SearchSource[] = [];
     let memorySaved = false;
 
     if (actionDecision) {
@@ -152,8 +154,9 @@ export async function POST(request: Request) {
       if (core.decision === "SAVE_MEMORY") memorySaved = true;
       if (core.decision === "USE_TOOL") {
         const results = Array.isArray(actionResult.output?.results) ? actionResult.output.results as Array<{ title: string; url: string; snippet?: string }> : [];
-        searchPerformed = results.length > 0;
-        searchContext = results.length ? `\n\nVerified research results:\n${results.map((item) => `- ${item.title}: ${item.url}\n  ${item.snippet ?? ""}`).join("\n")}` : "\n\nNo verified search results were returned.";
+        searchSources = results.filter((item) => typeof item.title === "string" && /^https?:\/\//i.test(item.url)).map((item) => ({ title: item.title, url: item.url, snippet: item.snippet }));
+        searchPerformed = searchSources.length > 0;
+        searchContext = searchSources.length ? `\n\nVerified research results:\n${searchSources.map((item) => `- ${item.title}: ${item.url}\n  ${item.snippet ?? ""}`).join("\n")}` : "\n\nNo verified search results were returned.";
       }
     }
 
@@ -171,7 +174,7 @@ export async function POST(request: Request) {
     if (assistantMessageError) throw assistantMessageError;
     const { error: conversationUpdateError } = await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId).eq("user_id", user.id);
     if (conversationUpdateError) throw conversationUpdateError;
-    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: conversationAgent.id, actionAgent: core.agent, guard: { risk: guard.risk }, intelligence: { epistemic: intelligence.epistemic, learningSignals: intelligence.learningSignals.length, followUpRelevant: intelligence.followUp.relevant }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, reply });
+    return NextResponse.json({ ok: true, conversationId, decision: core.decision, agent: conversationAgent.id, actionAgent: core.agent, guard: { risk: guard.risk }, intelligence: { epistemic: intelligence.epistemic, learningSignals: intelligence.learningSignals.length, followUpRelevant: intelligence.followUp.relevant }, actionId, actionStatus: actionResult?.ok ? "completed" : null, memorySaved, searchPerformed, sources: searchSources, reply });
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
