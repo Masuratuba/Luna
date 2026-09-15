@@ -5,6 +5,7 @@ import { agentForTask } from "./agent-orchestrator";
 test("agentForTask routes common tasks to the correct agent", () => {
   const cases: Array<[string, string]> = [
     ["Recherchiere aktuelle Informationen", "research"],
+    ["Von Tarvisio nach Frankfurt am 20. September 2026, möglichst günstig, egal ob Zug oder Bus", "research"],
     ["Merk dir, dass ich Deutsch bevorzuge", "memory"],
     ["Plane die nächsten Schritte", "planner"],
     ["Schick diese E-Mail", "action"],
