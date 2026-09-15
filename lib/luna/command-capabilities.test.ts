@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { parseLunaCommand } from "./command-capabilities";
 
 describe("Luna command capabilities", () => {
-  it("parses forget", () => assert.deepEqual(parseLunaCommand("Luna, vergiss meine alte Präferenz"), { kind: "forget", query: "meine alte Präferenz" }));
+  it("parses direct forget", () => assert.deepEqual(parseLunaCommand("Luna, vergiss meine alte Präferenz"), { kind: "forget", query: "meine alte Präferenz" }));
+  it("parses natural German forget requests", () => {
+    assert.deepEqual(parseLunaCommand("Bitte vergiss, dass ich gerne reise."), { kind: "forget", query: "dass ich gerne reise." });
+    assert.deepEqual(parseLunaCommand("Lösche, dass ich gerne reise."), { kind: "forget", query: "dass ich gerne reise." });
+  });
+  it("does not confuse memory save with forget", () => assert.equal(parseLunaCommand("Merke dir, dass ich gerne reise."), null));
   it("parses update", () => assert.deepEqual(parseLunaCommand("Luna, aktualisiere mein Ziel zu Tuba fertigstellen"), { kind: "update", query: "mein Ziel", replacement: "Tuba fertigstellen" }));
   it("parses context", () => assert.deepEqual(parseLunaCommand("Luna, Kontext"), { kind: "context" }));
   it("parses verify", () => assert.deepEqual(parseLunaCommand("Luna, prüf das"), { kind: "verify", target: "das" }));
