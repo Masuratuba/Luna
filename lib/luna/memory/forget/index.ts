@@ -4,7 +4,7 @@ export type ForgetMemoryResult =
   | { ok: true; deleted: boolean; memoryId: string | null; target: string }
   | { ok: false; reason: "NO_TARGET" | "NOT_FOUND" };
 
-const FORGET_PREFIX = /^\s*(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)\s+(?:bitte\s+)?(?:dass\s+)?(?:du\s+)?(?:dir\s+)?/i;
+const FORGET_PREFIX = /^\s*(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+(?:bitte\s+)?(?:dass\s+)?(?:du\s+)?(?:dir\s+)?/i;
 
 export function extractForgetTarget(message: string): string | null {
   const target = message.replace(FORGET_PREFIX, "").trim().replace(/[.!?]+$/, "").trim();
@@ -12,7 +12,7 @@ export function extractForgetTarget(message: string): string | null {
 }
 
 export function isForgetMemoryRequest(message: string): boolean {
-  return /^\s*(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)\b/i.test(message);
+  return /^\s*(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+/i.test(message);
 }
 
 export async function forgetMemory(
