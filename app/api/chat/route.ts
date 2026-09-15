@@ -5,6 +5,7 @@ import { assessIntelligence } from "../../../lib/luna/intelligence-core";
 import { evaluateGuard } from "../../../lib/luna/guard";
 import { extractExplicitMemory, selectRelevantMemories } from "../../../lib/luna/memory";
 import { forgetMemory } from "../../../lib/luna/memory/forget";
+import { updateMemory } from "../../../lib/luna/memory/update";
 import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
 import { ExecutionBudget } from "../../../lib/luna/execution-budget";
 import { requireUser } from "../../../lib/supabase/auth";
@@ -59,8 +60,8 @@ export async function POST(request: Request) {
 
     const directCommand = parseLunaCommand(message);
     if (directCommand) {
-      if (directCommand.kind === "forget") {
-        const action = createAction("memory", { message, agent: "memory", command: "forget" });
+      if (directCommand.kind === "forget" || directCommand.kind === "update") {
+        const action = createAction("memory", { message, agent: "memory", command: directCommand.kind });
         await createPendingAction(supabase, user.id, action, "memory");
         const guardianResult = await executeThroughGuardian({
           agent: "memory",
@@ -74,7 +75,9 @@ export async function POST(request: Request) {
             trustedAdmin,
             identity,
             budget,
-            handler: async () => forgetMemory(supabase, user.id, message),
+            handler: async () => directCommand.kind === "forget"
+              ? forgetMemory(supabase, user.id, message)
+              : updateMemory(supabase, user.id, message),
           },
         });
         const execution = guardianResult.execution;
@@ -82,12 +85,14 @@ export async function POST(request: Request) {
         const actionResult: ActionResult = execution ?? { ok: false, error: guardianResult.error ?? guardianResult.guard.reason };
         await persistAction(supabase, user.id, action, actionResult, guardianResult.guard.risk);
         if (!actionResult.ok) {
-          const reply = guardianResult.guard.decision === "REQUIRE_APPROVAL" ? "Diese Aktion braucht zuerst deine ausdrückliche Freigabe." : "Ich konnte die Erinnerung nicht sicher löschen.";
+          const reply = guardianResult.guard.decision === "REQUIRE_APPROVAL" ? "Diese Aktion braucht zuerst deine ausdrückliche Freigabe." : directCommand.kind === "forget" ? "Ich konnte die Erinnerung nicht sicher löschen." : "Ich konnte die Erinnerung nicht sicher aktualisieren.";
           return NextResponse.json({ ok: false, command: directCommand.kind, reply, result: null, actionId: action.id, actionStatus: "failed" }, { status: guardianResult.guard.decision === "REQUIRE_APPROVAL" ? 403 : 502 });
         }
         if (output?.ok === false && output.reason === "NOT_FOUND") return NextResponse.json({ ok: true, command: directCommand.kind, reply: "Ich habe keine passende Erinnerung gefunden.", result: null, actionId: action.id, actionStatus: "completed" });
-        if (output?.ok === false && output.reason === "NO_TARGET") return NextResponse.json({ ok: false, command: directCommand.kind, reply: "Sag mir bitte, was ich vergessen soll.", result: null, actionId: action.id, actionStatus: "completed" }, { status: 400 });
-        return NextResponse.json({ ok: true, command: directCommand.kind, reply: "Erledigt. Ich habe die passende Erinnerung gelöscht.", result: output ?? null, actionId: action.id, actionStatus: "completed" });
+        if (output?.ok === false && output.reason === "NO_TARGET") return NextResponse.json({ ok: false, command: directCommand.kind, reply: "Sag mir bitte, was ich vergessen oder ändern soll.", result: null, actionId: action.id, actionStatus: "completed" }, { status: 400 });
+        if (output?.ok === false && output.reason === "NO_REPLACEMENT") return NextResponse.json({ ok: false, command: directCommand.kind, reply: "Sag mir bitte auch, auf welchen neuen Wert ich die Erinnerung ändern soll.", result: null, actionId: action.id, actionStatus: "completed" }, { status: 400 });
+        if (output?.ok === false && output.reason === "SENSITIVE") return NextResponse.json({ ok: false, command: directCommand.kind, reply: "Die neue Information enthält sensible Zugangsdaten.", result: null, actionId: action.id, actionStatus: "completed" }, { status: 400 });
+        return NextResponse.json({ ok: true, command: directCommand.kind, reply: directCommand.kind === "forget" ? "Erledigt. Ich habe die passende Erinnerung gelöscht." : "Aktualisiert. Die passende Erinnerung wurde geändert.", result: output ?? null, actionId: action.id, actionStatus: "completed" });
       }
       const commandResult = await executeLunaCommand(directCommand, supabase, user.id);
       return NextResponse.json({ ok: commandResult.ok, command: directCommand.kind, reply: commandResult.reply, result: commandResult.result ?? null }, { status: commandResult.status ?? (commandResult.ok ? 200 : 400) });
