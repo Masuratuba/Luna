@@ -9,6 +9,7 @@ const MAX_SEARCH_LIMIT = 10;
 
 type WebCitation = Readonly<{ url?: unknown; title?: unknown }>;
 type SearchOutput = Readonly<{ output_text?: unknown; output?: unknown }>;
+type ChatSearchMessage = Readonly<{ content?: unknown; annotations?: unknown }>;
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -83,6 +84,32 @@ export function extractSearchResults(response: SearchOutput, limit: number): rea
   return results;
 }
 
+export function extractChatSearchResults(message: ChatSearchMessage, limit: number): readonly SearchResult[] {
+  const text = typeof message.content === "string" ? message.content.trim() : "";
+  const annotations = Array.isArray(message.annotations) ? message.annotations : [];
+  const results: SearchResult[] = [];
+  const seen = new Set<string>();
+
+  for (const annotation of annotations) {
+    if (!annotation || typeof annotation !== "object") continue;
+    const direct = annotation as WebCitation & { type?: unknown; url_citation?: unknown };
+    if (direct.type !== "url_citation") continue;
+    const nested = direct.url_citation && typeof direct.url_citation === "object" ? direct.url_citation as WebCitation : undefined;
+    const url = typeof direct.url === "string" ? direct.url.trim() : typeof nested?.url === "string" ? nested.url.trim() : "";
+    if (!url || !isHttpUrl(url) || seen.has(url)) continue;
+    const title = typeof direct.title === "string" && direct.title.trim()
+      ? direct.title.trim()
+      : typeof nested?.title === "string" && nested.title.trim()
+        ? nested.title.trim()
+        : url;
+    seen.add(url);
+    results.push({ title, url, snippet: text });
+    if (results.length >= limit) return results;
+  }
+
+  return text ? [{ title: "OpenAI Web-Recherche", snippet: text }] : results;
+}
+
 export class HttpSearchProvider implements SearchProvider {
   readonly name = "openai-web-search";
 
@@ -95,15 +122,21 @@ export class HttpSearchProvider implements SearchProvider {
     const input = `Search the live web and answer this user request with current, concrete information. This is a research operation, not a general-knowledge answer. For travel requests, check actual current transport providers and booking/search pages for the requested date, route, transport modes and prices where available. Compare the cheapest realistic options and clearly distinguish exact fares from estimates. Prefer official provider sources. Include source URLs when available.\n\nUser request: ${query}`;
 
     try {
-      // The dedicated OpenAI Search API always performs web retrieval. This avoids relying on
-      // Responses API tool-choice behavior for a task where live search is mandatory.
+      // gpt-5-search-api is the dedicated Chat Completions search model. The search option is
+      // required to use the web-search integration, and the request gets an explicit bounded
+      // timeout so a slow live-search call cannot hang the Research Agent indefinitely.
       const response = await getOpenAI().chat.completions.create({
         model,
+        web_search_options: {},
         messages: [{ role: "user", content: input }],
+      }, {
+        timeout: PROVIDER_TIMEOUT_MS,
+        maxRetries: 0,
       });
-      const text = response.choices[0]?.message?.content?.trim() ?? "";
-      if (!text) throw new Error("SEARCH_EMPTY_RESULT");
-      return [{ title: "OpenAI Web-Recherche", snippet: text }].slice(0, limit);
+      const message = response.choices[0]?.message;
+      const results = extractChatSearchResults(message ?? {}, limit);
+      if (!results.length) throw new Error("SEARCH_EMPTY_RESULT");
+      return results;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "search execution failed";
       throw new Error(`SEARCH_PROVIDER_FAILED: ${message}`);
