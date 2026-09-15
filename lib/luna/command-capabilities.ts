@@ -1,4 +1,4 @@
-import { containsSensitiveMemory, normalizeMemory } from "./memory";
+import { parseMemoryUpdate, updateMemory } from "./memory/update";
 import { forgetMemory } from "./memory/forget";
 
 export type LunaCommand =
@@ -15,8 +15,8 @@ export function parseLunaCommand(message: string): LunaCommand | null {
   const lower = text.toLocaleLowerCase("de-DE");
   const forgetPrefix = /^(?:luna[, ]+)?(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+/i;
   if (forgetPrefix.test(text)) return { kind: "forget", query: text.replace(forgetPrefix, "").trim() };
-  const update = text.match(/^luna[, ]+aktualisiere\s+(.+?)\s+(?:zu|auf|mit)\s+(.+)$/i);
-  if (update) return { kind: "update", query: update[1].trim(), replacement: update[2].trim() };
+  const memoryUpdate = parseMemoryUpdate(text);
+  if (memoryUpdate) return { kind: "update", query: memoryUpdate.target, replacement: memoryUpdate.replacement };
   if (/^luna[, ]+kontext\s*$/i.test(text) || lower === "kontext") return { kind: "context" };
   if (/^luna[, ]+prüf(?:e)?\s+(?:das|dies|dass?)?/i.test(text)) return { kind: "verify", target: text.replace(/^luna[, ]+prüf(?:e)?\s+/i, "").trim() || "aktuellen Zustand" };
   if (/^luna[, ]+was jetzt\??$/i.test(text)) return { kind: "next" };
@@ -34,16 +34,11 @@ export async function executeLunaCommand(command: LunaCommand, supabase: any, us
   }
 
   if (command.kind === "update") {
-    if (!command.replacement || containsSensitiveMemory(command.replacement)) return { ok: false, status: 400, reply: "Die neue Information ist leer oder enthält sensible Zugangsdaten." };
-    const query = command.query.slice(0, 500);
-    const normalized = normalizeMemory({ type: "fact", content: command.replacement, importance: 0.7 });
-    const { data: matches, error } = await supabase.from("memories").select("id, type, content, importance, metadata").eq("user_id", userId).ilike("content", `%${query}%`).limit(5);
-    if (error) throw error;
-    if (!matches?.length) return { ok: false, status: 404, reply: "Ich habe keine passende Erinnerung gefunden, die ich aktualisieren kann." };
-    const target = matches[0];
-    const { data, error: updateError } = await supabase.from("memories").update({ content: normalized.content, updated_at: new Date().toISOString() }).eq("id", target.id).eq("user_id", userId).select().single();
-    if (updateError) throw updateError;
-    return { ok: true, reply: "Aktualisiert. Die passende Erinnerung wurde geändert.", result: { memory: data } };
+    const result = await updateMemory(supabase, userId, `Ändere ${command.query} zu ${command.replacement}`);
+    if (!result.ok && result.reason === "SENSITIVE") return { ok: false, status: 400, reply: "Die neue Information enthält sensible Zugangsdaten." };
+    if (!result.ok && result.reason === "NOT_FOUND") return { ok: false, status: 404, reply: "Ich habe keine passende Erinnerung gefunden, die ich aktualisieren kann." };
+    if (!result.ok) return { ok: false, status: 400, reply: "Sag mir bitte, was ich ändern soll und auf welchen neuen Wert." };
+    return { ok: true, reply: "Aktualisiert. Die passende Erinnerung wurde geändert.", result };
   }
 
   if (command.kind === "context") {
