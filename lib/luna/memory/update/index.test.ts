@@ -26,15 +26,14 @@ describe("memory update", () => {
           },
           update() {
             updated = true;
-            return {
+            const updateQuery = {
               eq() {
-                return {
-                  eq() {
-                    return { select: async () => ({ data: [{ id: "memory-1" }], error: null }) };
-                  },
-                };
+                return updateQuery;
               },
+              select: async () => ({ data: [{ id: "memory-1" }], error: null }),
+              single: async () => ({ data: { id: "memory-1", content: "Lieblingsfarbe ist Rot" }, error: null }),
             };
+            return updateQuery;
           },
         };
       },
