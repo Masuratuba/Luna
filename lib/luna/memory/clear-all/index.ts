@@ -1,8 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type ClearAllMemoriesResult =
-  | { ok: true; deletedCount: number }
-  | { ok: false; reason: "NOT_CONFIRMED" };
+export type ClearAllMemoriesResult = { ok: true; deletedCount: number };
 
 const CLEAR_ALL_PATTERN = /^\s*(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+(?:bitte\s+)?(?:alle(?:\s+meine)?\s+(?:erinnerungen|memories)|alles(?:\s*,?\s*(?:was\s+du\s+dir\s+über\s+mich\s+gemerkt\s+hast|was\s+du\s+über\s+mich\s+weißt))?)\s*[.!?]*\s*$/i;
 
