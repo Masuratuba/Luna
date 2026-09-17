@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { clearAllMemories, isClearAllMemoriesRequest } from "../clear-all";
 
 export type ForgetMemoryResult =
-  | { ok: true; deleted: boolean; memoryId: string | null; target: string }
+  | { ok: true; deleted: boolean; memoryId: string | null; target: string; deletedCount?: number }
   | { ok: false; reason: "NO_TARGET" | "NOT_FOUND" };
 
 const FORGET_PREFIX = /^\s*(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+(?:bitte\s+)?(?:dass\s+)?(?:du\s+)?(?:dir\s+)?/i;
@@ -23,6 +24,17 @@ export async function forgetMemory(
   userId: string,
   message: string,
 ): Promise<ForgetMemoryResult> {
+  if (isClearAllMemoriesRequest(message)) {
+    const result = await clearAllMemories(supabase, userId);
+    return {
+      ok: true,
+      deleted: result.deletedCount > 0,
+      memoryId: null,
+      target: "all",
+      deletedCount: result.deletedCount,
+    };
+  }
+
   const target = extractForgetTarget(message);
   if (!target) return { ok: false, reason: "NO_TARGET" };
 
