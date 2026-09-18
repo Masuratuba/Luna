@@ -44,7 +44,7 @@ test("context command displays saved memories", async () => {
   assert.match(result.reply, /Gespeicherte Erinnerungen: 2/);
   assert.match(result.reply, /Technische Aufgaben isoliert bearbeiten/);
   assert.match(result.reply, /Antworten direkt und klar/);
-  assert.deepEqual(result.result.memories, data.memories);
+  assert.deepEqual((result as { result: { memories: typeof data.memories } }).result.memories, data.memories);
   assert.deepEqual(
     calls.filter((call) => call.table === "memories"),
     [{ table: "memories", column: "user_id", value: "user-123" }],
