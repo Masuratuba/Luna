@@ -56,6 +56,7 @@ export async function executeLunaCommand(command: LunaCommand, supabase: any, us
       `Aufgaben: ${tasks?.length ?? 0}`,
       ...(tasks ?? []).slice(0, 8).map((t: any) => `- ${t.title} (${t.status})`),
       `Gespeicherte Erinnerungen: ${memories?.length ?? 0}`,
+      ...(memories ?? []).slice(0, 12).map((m: any) => `- [${m.type}] ${m.content}`),
     ].join("\n");
     return { ok: true, reply, result: { projects: projects ?? [], tasks: tasks ?? [], memories: memories ?? [] } };
   }
