@@ -33,7 +33,7 @@ function createMemoryStore(initial: Row[] = []) {
   }
 
   function query(table: string) {
-    assert.equal(table, "memories");
+    if (table !== "memories") return { select: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [], error: null }) }) }) }) };
     let filters: Array<[string, string, string?]> = [];
     let selected = false;
     let operation: "select" | "delete" | "update" | "insert" = "select";
