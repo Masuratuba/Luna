@@ -44,7 +44,6 @@ function createMemoryStore(initial: Row[] = []) {
     const chain: any = {
       select() {
         selected = true;
-        if (!insertPayload) operation = "select";
         return chain;
       },
       eq(column: string, value: string) {
