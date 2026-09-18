@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       ok: result.result?.ok ?? null,
       retryScheduled: result.retryScheduled,
       uncertainExecution: result.uncertainExecution ?? false,
-      error: result.error ?? result.result?.error ?? null,
+      error: result.error ?? (result.result?.ok === false ? result.result.error : null),
     });
   }
 
