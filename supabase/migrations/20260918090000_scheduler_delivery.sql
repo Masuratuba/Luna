@@ -1,6 +1,6 @@
 create table if not exists public.scheduler_deliveries (
   id uuid primary key default gen_random_uuid(),
-  task_id uuid not null references public.scheduler_tasks(id) on delete cascade,
+  task_id text not null references public.scheduler_tasks(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   title text not null,
   body text not null,
