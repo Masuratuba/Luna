@@ -96,6 +96,7 @@ test("calendar update validates fields and sends PATCH payload", async () => {
   assert.equal(payload.body.content, "New body");
   await assert.rejects(() => provider.update({ id: "e1", subject: "" }), /CALENDAR_SUBJECT_REQUIRED/);
   await assert.rejects(() => provider.update({ id: "e1", start: "not-a-date" }), /CALENDAR_START_INVALID/);
+  await assert.rejects(() => provider.update({ id: "e1", start: "2026-09-22T14:00:00Z", end: "2026-09-22T13:00:00Z" }), /CALENDAR_RANGE_INVALID/);
 });
 
 test("calendar provider maps authorization, HTTP, content-type, and timeout failures", async () => {
