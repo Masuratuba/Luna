@@ -10,6 +10,16 @@ import { approvalActionKey, consumeDurableApproval } from "../../../lib/luna/app
 const MAX_TEXT = 500;
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean) : typeof value === "string" ? value.split(",").map((x) => x.trim()).filter(Boolean) : []; }
 function text(value: unknown, max = MAX_TEXT): string { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
+function calendarInputError(message: string): string | undefined {
+  const messages: Record<string, string> = {
+    CALENDAR_ID_REQUIRED: "event id is required",
+    CALENDAR_SUBJECT_REQUIRED: "subject is required",
+    CALENDAR_START_INVALID: "start must be a valid date",
+    CALENDAR_END_INVALID: "end must be a valid date",
+    CALENDAR_RANGE_INVALID: "end must be later than start",
+  };
+  return messages[message];
+}
 
 export async function POST(request: Request) {
   try {
@@ -70,6 +80,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, result: result.execution?.output?.result ?? null });
   } catch (error: unknown) {
     if (error instanceof Error) {
+      const inputError = calendarInputError(error.message);
+      if (inputError) return NextResponse.json({ error: inputError }, { status: 400 });
       if (error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
       if (error.message === "SUPABASE_NOT_CONFIGURED") return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
       if (error.message === "MICROSOFT_NOT_CONNECTED") return NextResponse.json({ error: "Microsoft account is not connected" }, { status: 409 });
