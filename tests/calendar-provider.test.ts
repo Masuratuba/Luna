@@ -87,7 +87,7 @@ test("calendar update validates fields and sends PATCH payload", async () => {
   };
 
   const provider = new MicrosoftGraphCalendarProvider("token");
-  await provider.update({ id: "e1", subject: " Updated ", start: "2026-09-22T12:00:00Z", end: "2026-09-22T13:00:00Z", body: "New body" });
+  await provider.update({ id: "e1", subject: " Updated ", start: "2026-09-22T12:00:00Z", end: "2026-09-22T13:00:00Z", body: " New body " });
   assert.equal(requestedInit?.method, "PATCH");
   const payload = JSON.parse(String(requestedInit?.body));
   assert.equal(payload.subject, "Updated");
