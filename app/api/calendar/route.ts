@@ -86,6 +86,9 @@ export async function POST(request: Request) {
       if (error.message === "SUPABASE_NOT_CONFIGURED") return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
       if (error.message === "MICROSOFT_NOT_CONNECTED") return NextResponse.json({ error: "Microsoft account is not connected" }, { status: 409 });
       if (error.message === "CALENDAR_PROVIDER_UNAUTHORIZED") return NextResponse.json({ error: "Microsoft calendar permission is missing or expired" }, { status: 403 });
+      if (error.message === "CALENDAR_PROVIDER_TIMEOUT") return NextResponse.json({ error: "Microsoft calendar request timed out" }, { status: 504 });
+      if (error.message === "CALENDAR_PROVIDER_INVALID_CONTENT_TYPE") return NextResponse.json({ error: "Microsoft calendar returned an invalid response" }, { status: 502 });
+      if (error.message.startsWith("CALENDAR_PROVIDER_HTTP_")) return NextResponse.json({ error: "Microsoft calendar provider request failed" }, { status: 502 });
       if (error.message === "APPROVAL_INVALID_OR_CONSUMED") return NextResponse.json({ error: "approval is invalid, expired, consumed, or does not match this action" }, { status: 403 });
     }
     console.error("Luna calendar error", error);
