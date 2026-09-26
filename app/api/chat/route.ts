@@ -20,6 +20,25 @@ type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
 type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: string };
 type SearchSource = { title: string; url: string; snippet?: string };
 
+type ChatDependencies = {
+  requireUser: typeof requireUser;
+  search: (query: string) => Promise<SearchSource[]>;
+  openAI: ReturnType<typeof getOpenAI>;
+};
+
+function createDefaultChatDependencies(): ChatDependencies {
+  return {
+    requireUser,
+    search: async (query) => {
+      const results = await createProviderRegistry().search().search({ query, limit: 5 });
+      return results
+        .filter((item) => typeof item.title === "string" && typeof item.url === "string")
+        .map((item) => ({ title: item.title, url: item.url, snippet: item.snippet }));
+    },
+    openAI: getOpenAI(),
+  };
+}
+
 async function persistAction(supabase: SupabaseClient, userId: string, action: ReturnType<typeof createAction>, result: ActionResult, risk: string) {
   const status = result.ok ? "completed" : "failed";
   const eventType = result.ok ? "action.completed" : "action.failed";
@@ -47,9 +66,9 @@ function taskTitle(message: string) {
   return message.replace(/^\s*(bitte\s+)?(erstelle|erstell|mach|lege|setze)\s+(mir\s+)?(eine?\s+)?(aufgabe|task)\s*[:,-]?\s*/i, "").trim().slice(0, 200) || message.slice(0, 200);
 }
 
-export async function POST(request: Request) {
+export async function handleChatPost(request: Request, dependencies: ChatDependencies = createDefaultChatDependencies()) {
   try {
-    const { supabase, user, role, trustedAdmin, identity } = await requireUser(request);
+    const { supabase, user, role, trustedAdmin, identity } = await dependencies.requireUser(request);
     const budget = new ExecutionBudget();
     const body = await request.json();
     const message = typeof body.message === "string" ? body.message.trim() : "";
@@ -151,7 +170,7 @@ export async function POST(request: Request) {
       const capability = core.decision === "CREATE_TASK" ? "task.create" : core.decision === "SAVE_MEMORY" ? "memory.write" : "search";
       const toolRegistry = createToolHandlerRegistry();
       toolRegistry.register("search", async (toolAction) => {
-        const results = await createProviderRegistry().search().search({ query: String(toolAction.input.query ?? message), limit: 5 });
+        const results = await dependencies.search(String(toolAction.input.query ?? message));
         return { results };
       });
       const result = await executeThroughGuardian({
@@ -210,7 +229,7 @@ export async function POST(request: Request) {
         : "MEMORY OPERATION RESULT: NOT SAVED. Do not claim durable persistence."
       : "MEMORY OPERATION RESULT: no memory save was requested in this turn.";
     const instructions = `${LUNA_SYSTEM_PROMPT}\n\nConversation agent: ${conversationAgent.name}\nConversation agent role: ${conversationAgent.description}\nDecision: ${core.decision}\nAssigned action agent: ${core.agent}\nAgent dispatch: ${core.dispatch.reason}\nGuard risk: ${guard.risk}\nAction execution: ${actionResult ? "completed" : "not applicable"}\n${memoryExecutionContext}\nEpistemic state: ${intelligence.epistemic}\n\nRelevant durable memory:\n${memoryContext || "(none)"}\n\nIntelligence guidance:\n${learningContext}\n${followUpContext}\n\nTruth rules:\n${intelligence.truthRules.map((rule) => `- ${rule}`).join("\n")}\n\nMemory rule: Never claim to remember secrets or credentials. If an action execution is completed, acknowledge the actual completed operation. Do not claim an action was completed unless the execution status says completed.${searchContext}`;
-    const response = await getOpenAI().responses.create({ model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna", instructions, store: false, input: history.map((item) => ({ role: item.role, content: item.content })) });
+    const response = await dependencies.openAI.responses.create({ model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna", instructions, store: false, input: history.map((item) => ({ role: item.role, content: item.content })) });
     const reply = response.output_text || "Ich konnte gerade keine Antwort erzeugen.";
     const { error: assistantMessageError } = await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: reply });
     if (assistantMessageError) throw assistantMessageError;
@@ -229,4 +248,9 @@ export async function POST(request: Request) {
     const status = Number(err?.status);
     return NextResponse.json({ error: "LUNA API-Fehler" }, { status: status >= 400 && status < 600 ? status : 500 });
   }
+}
+
+
+export async function POST(request: Request) {
+  return handleChatPost(request);
 }
