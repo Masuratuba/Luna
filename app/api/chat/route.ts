@@ -10,6 +10,7 @@ import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
 import { ExecutionBudget } from "../../../lib/luna/execution-budget";
 import { requireUser } from "../../../lib/supabase/auth";
 import { createProviderRegistry } from "../../../lib/providers/registry";
+import { createToolHandlerRegistry } from "../../../lib/luna/tool-handler-registry";
 import { getOpenAI } from "../../../lib/openai";
 import { executeLunaCommand, parseLunaCommand } from "../../../lib/luna/command-capabilities";
 import { getLunaAgent } from "../../../lib/luna/agents";
@@ -148,6 +149,11 @@ export async function POST(request: Request) {
       await createPendingAction(supabase, user.id, action, core.agent);
       const explicitMemory = extractExplicitMemory(message);
       const capability = core.decision === "CREATE_TASK" ? "task.create" : core.decision === "SAVE_MEMORY" ? "memory.write" : "search";
+      const toolRegistry = createToolHandlerRegistry();
+      toolRegistry.register("search", async (toolAction) => {
+        const results = await createProviderRegistry().search().search({ query: String(toolAction.input.query ?? message), limit: 5 });
+        return { results };
+      });
       const result = await executeThroughGuardian({
         agent: core.agent,
         capability,
@@ -175,10 +181,10 @@ export async function POST(request: Request) {
               if (error) throw error;
               return { memory: data };
             }
-            const results = await createProviderRegistry().search().search({ query: message, limit: 5 });
-            return { results };
+            throw new Error("unexpected tool execution fallback");
           },
         },
+        toolRegistry,
       });
       actionResult = result.execution ?? { ok: false, error: result.error ?? result.guard.reason };
       await persistAction(supabase, user.id, action, actionResult, guard.risk);
