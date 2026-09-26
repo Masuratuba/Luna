@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { handleChatPost } from "./route";
+import { handleChatPost } from "./chat-handler";
 import { ExternalTrustedAuthAdapter } from "../../../lib/luna/trusted-auth";
 
 function createQueryResult(table: string, operation: string) {
