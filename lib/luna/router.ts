@@ -11,7 +11,7 @@ export function routeMessage(message: string): LunaDecision {
   // even when the user does not explicitly say "suche" or "recherchiere".
   const travelResearch =
     /\b(von\s+.+\s+nach\s+.+|nach\s+.+\s+am\s+\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?|bus|zug|bahn|flug|flugzeug|fahrt|reise|ticket|fahrkarte|fahrpreis|fahrplan|verbindung|route|preis|preise|preislich|kosten|kostet|günstig|guenstig|billig|verfügbar|verfuegbar|aktuell|derzeit|heute)\b/.test(text);
-  if (travelResearch || /\b(recherch|suche|github|outlook|internet|web)\b/.test(text)) return "USE_TOOL";
+  if (travelResearch || /\b(recherch\w*|such\w*|github|outlook|internet|web)\b/.test(text)) return "USE_TOOL";
 
   if (/\b(erinnerst du dich|was weißt du|was hatten wir)\b/.test(text)) return "USE_MEMORY";
 
