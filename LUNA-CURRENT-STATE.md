@@ -1,58 +1,57 @@
 # LUNA — CURRENT STATE
 
-Last updated: 2026-09-15
+Last updated: 2026-09-26
 
-## Purpose of this file
-This is the handoff file for continuing LUNA when a ChatGPT conversation becomes too long. Read this file before making changes. Do not restart old work from memory or guess the state.
+## Handoff purpose
+This file is the current handoff reference for continuing LUNA in a new conversation. Read it before making changes. Continue from the current checkpoint; do not restart old work or guess the state.
 
 ## Current project state
 - Project: LUNA
 - Repository: `Masuratuba/Luna`
-- Current `main` after the research fixes is advancing from the previously deployed `7923a9fa9a65e99d97d90a7ba0c3227e106f4a59`.
+- Branch: `main`
+- Current checkpoint: **CP71 — Quality / CI Audit Complete**
+- Previous checkpoint: CP70 — D1 Memory Forget Complete
+- Current main commit before this documentation update: `10d229eef0ff67b67766365706375c8754224c67`
 - Production URL recorded for the project: `https://luna-luna81.vercel.app/`
 - UI is intentionally frozen. Do not redesign or alter the pre-Voice UI unless explicitly requested.
-- Microsoft OAuth is not part of the current development path.
+- Microsoft OAuth is not part of the current development path unless explicitly resumed.
 - Login-bypass/development mode is currently used for the owner's testing.
 
-## Active problem and root cause found
-The Research Agent was still returning:
-`Ich konnte die Recherche gerade nicht verlässlich ausführen.`
-for requests such as:
-`Von Tarvisio nach Frankfurt am 20. September 2026, möglichst günstig, egal ob Zug oder Bus.`
+## CP70 → CP71 work completed
+The post-CP70 Calendar/API and quality audit was completed.
 
-The previously assumed timeout problem was not the complete cause.
+### Calendar
+- Calendar provider date-range validation is implemented and tested.
+- Calendar provider transport failures are mapped and tested.
+- Calendar provider body normalization is implemented and tested.
+- Calendar route uses the shared `calendarInputError` helper.
+- Dedicated route-error regression coverage exists.
+- Missing Microsoft access-token behavior is explicitly tested.
+- The latest Calendar test change is in commit `31783a3ed2c6e81438beef27a584b2d719191855`.
 
-The current Research provider had been switched to the dedicated Chat Completions search model `gpt-5-search-api`, but the actual call omitted the required `web_search_options: {}` parameter from the OpenAI search example. It also did not pass an explicit 45-second SDK timeout for the search call and discarded the Chat Completions `url_citation` annotations, so source URLs were not propagated into LUNA.
+## CI quality gates
+GitHub Actions workflow: `.github/workflows/ci.yml`
 
-OpenAI's current documentation confirms that `gpt-5-search-api` is the Chat Completions web-search model and shows `web_search_options: {}` on the call. It also states that the response contains `message.content` plus URL citation annotations.
+The workflow runs on pushes to `main` and pull requests and performs:
+1. dependency installation
+2. TypeScript `tsc --noEmit`
+3. ESLint
+4. `npm test`
+5. production build
 
-## Research path verified
-1. Travel request routes to the Research agent.
-2. Research agent policy includes the `search` capability.
-3. Guardian permits read-only search.
-4. Search provider is registered.
-5. The provider uses `gpt-5-search-api` with explicit `web_search_options: {}`.
-6. Search requests now have an explicit 45-second timeout and `maxRetries: 0` so the bound is real rather than multiplied by automatic retries.
-7. Chat-search URL citations are extracted and passed into the Research result instead of being discarded.
-8. The existing executor scope remains aligned with Checkpoint 60: normal users use `search:read`; trusted development/admin identities may use `luna:*`.
+For commit `31783a3ed2c6e81438beef27a584b2d719191855`, Luna CI run **#474** completed successfully. All five quality gates passed.
 
-## Fixes applied in the current work
-- `d8250e3c867f7954c0034eb40e99a5cb4ec78107` — fixed live search invocation, added `web_search_options`, explicit timeout/retry bound, and Chat Completions citation extraction.
-- `dd4d90d0e24078a2dece612943f8d0e97d6ee64a` — added regression tests for Chat Completions citation extraction.
-- `14222541af98cc95d58155d1b64be7759c34e35c` — changed the test-only search diagnostic to exercise the real `HttpSearchProvider` instead of a separate Responses API path.
+## Deployment verification
+- Vercel status for commit `31783a3ed2c6e81438beef27a584b2d719191855`: success.
+- GitHub Actions and Vercel both confirmed the current Calendar/test state.
+- Supabase availability is not required for the static/unit quality gates above; live Supabase-dependent functionality still requires an active/configured Supabase project.
 
-## Required verification before the final user test
-Do not claim the Research path works just because GitHub accepts the commit or Vercel says Ready.
-
-1. Wait for the new Vercel deployment to show `Ready` for the newest `main` commit.
-2. Run the test-only diagnostic endpoint in the deployed environment and confirm `ok: true`, a non-zero result count, and usable source URLs when the provider returns citations.
-3. Confirm the normal chat path uses the same provider and that the Research Agent no longer falls back to the generic failure message.
-4. Only after those checks, ask the user for one final real-world research request.
-
-## Continuity rule
-If a new ChatGPT conversation starts with LUNA work, first read `LUNA-CURRENT-STATE.md`, then continue from the active problem above. Do not make the user explain the project again.
+## Known repository housekeeping
+There are older open GitHub issues/PRs from historical checkpoints. They are not automatically production failures. They must be reviewed individually before being treated as active defects or work items.
 
 ## Checkpoints
-- Security/action execution baseline: `CHECKPOINT-60.md`
-- Earlier central action policy: `CHECKPOINT-59.md`
-- Historical checkpoints are preserved; do not roll back unless the user explicitly says `Checkpoint, zurück an Checkpoint`.
+- CP70: D1 — Memory Forget Complete
+- CP71: Quality / CI Audit Complete — GREEN
+
+## Continuity rule
+When continuing LUNA, start from CP71 and inspect the current `main` commit/status before changing code. Keep the isolated workflow: complete and verify one task before beginning the next.
