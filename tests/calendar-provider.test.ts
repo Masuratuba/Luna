@@ -110,3 +110,14 @@ test("calendar provider maps authorization, HTTP, content-type, and timeout fail
   globalThis.fetch = async () => { throw new DOMException("timed out", "TimeoutError"); };
   await assert.rejects(() => provider.read("e1"), /CALENDAR_PROVIDER_TIMEOUT/);
 });
+test("calendar provider rejects missing access tokens before calling Graph", async () => {
+  let fetchCalled = false;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    return response(event);
+  };
+
+  const provider = new MicrosoftGraphCalendarProvider("   ");
+  await assert.rejects(() => provider.read("e1"), /MICROSOFT_GRAPH_ACCESS_TOKEN is not configured/);
+  assert.equal(fetchCalled, false);
+});
