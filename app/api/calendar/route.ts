@@ -6,20 +6,11 @@ import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
 import { getMicrosoftGraphAccessToken } from "../../../lib/integrations/microsoft";
 import { MicrosoftGraphCalendarProvider } from "../../../lib/providers/calendar";
 import { approvalActionKey, consumeDurableApproval } from "../../../lib/luna/approval-store";
+import { calendarInputError } from "../../../lib/providers/calendar-route-errors";
 
 const MAX_TEXT = 500;
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean) : typeof value === "string" ? value.split(",").map((x) => x.trim()).filter(Boolean) : []; }
 function text(value: unknown, max = MAX_TEXT): string { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
-function calendarInputError(message: string): string | undefined {
-  const messages: Record<string, string> = {
-    CALENDAR_ID_REQUIRED: "event id is required",
-    CALENDAR_SUBJECT_REQUIRED: "subject is required",
-    CALENDAR_START_INVALID: "start must be a valid date",
-    CALENDAR_END_INVALID: "end must be a valid date",
-    CALENDAR_RANGE_INVALID: "end must be later than start",
-  };
-  return messages[message];
-}
 
 export async function POST(request: Request) {
   try {
