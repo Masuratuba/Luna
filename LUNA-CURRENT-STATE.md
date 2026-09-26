@@ -3,55 +3,80 @@
 Last updated: 2026-09-26
 
 ## Handoff purpose
-This file is the current handoff reference for continuing LUNA in a new conversation. Read it before making changes. Continue from the current checkpoint; do not restart old work or guess the state.
+This file is the current handoff reference for continuing LUNA. Read it before making changes. Continue from the current checkpoint; do not restart old work or guess the state.
 
 ## Current project state
 - Project: LUNA
 - Repository: `Masuratuba/Luna`
 - Branch: `main`
-- Current checkpoint: **CP71 — Quality / CI Audit Complete**
-- Previous checkpoint: CP70 — D1 Memory Forget Complete
-- Current main commit before this documentation update: `10d229eef0ff67b67766365706375c8754224c67`
+- Current checkpoint: **CP72 — Prepared**
+- Previous checkpoint: CP71 — Quality / CI Audit Complete
+- CP72 preparation commits: `d2dc02fa11d7a16877ede20ebd0988c1dc6e1136`, then `5daf6b02cb9636a187fea1706f171686925a8e41`
 - Production URL recorded for the project: `https://luna-luna81.vercel.app/`
 - UI is intentionally frozen. Do not redesign or alter the pre-Voice UI unless explicitly requested.
 - Microsoft OAuth is not part of the current development path unless explicitly resumed.
 - Login-bypass/development mode is currently used for the owner's testing.
+- CP72 is prepared only; it is **not GREEN and not complete**.
 
-## CP70 → CP71 work completed
-The post-CP70 Calendar/API and quality audit was completed.
+## Work completed through CP71
+The repository has been audited against the planned LUNA architecture. The major building blocks are present:
+- LUNA Core and routing
+- 10 agents with isolation and policy
+- Guardian / Guardian Gateway
+- action engine/executor and approvals
+- memory lifecycle including forget/update
+- tasks and projects
+- research/search provider boundary
+- Microsoft mail/calendar paths
+- scheduler runtime, triggers, persistence and delivery
+- shop isolation, risk and finance boundaries
+- events/audit and diagnostics
+- Supabase migration foundation
+- CI quality gates and production build
+- frozen UI
 
-### Calendar
-- Calendar provider date-range validation is implemented and tested.
-- Calendar provider transport failures are mapped and tested.
-- Calendar provider body normalization is implemented and tested.
-- Calendar route uses the shared `calendarInputError` helper.
-- Dedicated route-error regression coverage exists.
-- Missing Microsoft access-token behavior is explicitly tested.
-- The latest Calendar test change is in commit `31783a3ed2c6e81438beef27a584b2d719191855`.
+CP71 specifically completed the Calendar/API quality audit:
+- provider date-range validation
+- provider transport-failure mapping
+- body normalization
+- shared route input-error helper
+- route-error regression coverage
+- missing Microsoft access-token regression coverage
+- CI/deployment quality baseline
 
-## CI quality gates
-GitHub Actions workflow: `.github/workflows/ci.yml`
+## CP72 — End-to-End Verification Preparation
+Objective: prove the real LUNA execution path before adding or expanding features.
 
-The workflow runs on pushes to `main` and pull requests and performs:
-1. dependency installation
-2. TypeScript `tsc --noEmit`
-3. ESLint
-4. `npm test`
-5. production build
+Target chain:
+`User request → /api/chat → LUNA Core → decision → agent selection → agent policy/capability → Guardian → action execution → tool/provider → persistence → event/audit → LUNA response`
 
-For commit `31783a3ed2c6e81438beef27a584b2d719191855`, Luna CI run **#474** completed successfully. All five quality gates passed.
+Acceptance criteria:
+1. Normal request enters chat route.
+2. Core produces expected decision.
+3. Expected agent is selected.
+4. Agent policy permits/rejects correctly.
+5. Guardian enforces the security decision.
+6. Action execution cannot bypass Guardian.
+7. Intended tool/provider is actually invoked.
+8. Success/failure persistence is truthful.
+9. Events/audit reflect the actual outcome.
+10. Final LUNA response does not claim an action completed when it did not.
+11. Existing tests remain green.
+12. TypeScript, ESLint, tests and production build pass.
+13. Final CP72 commit has successful Vercel deployment.
 
-## Deployment verification
-- Vercel status for commit `31783a3ed2c6e81438beef27a584b2d719191855`: success.
-- GitHub Actions and Vercel both confirmed the current Calendar/test state.
-- Supabase availability is not required for the static/unit quality gates above; live Supabase-dependent functionality still requires an active/configured Supabase project.
+Architectural questions to resolve during CP72:
+- Explicit UI `agentId` versus automatic Core routing.
+- Tool-handler registry versus direct provider invocation in the chat search path.
+- Large multi-responsibility chat route; test behavior before considering refactoring.
 
-## Known repository housekeeping
-There are older open GitHub issues/PRs from historical checkpoints. They are not automatically production failures. They must be reviewed individually before being treated as active defects or work items.
-
-## Checkpoints
-- CP70: D1 — Memory Forget Complete
-- CP71: Quality / CI Audit Complete — GREEN
+CP72 non-goals:
+- no new agents
+- no UI redesign
+- no unrelated provider work
+- no blind refactor
+- no Voice implementation yet
+- no Microsoft OAuth expansion
 
 ## Continuity rule
-When continuing LUNA, start from CP71 and inspect the current `main` commit/status before changing code. Keep the isolated workflow: complete and verify one task before beginning the next.
+Start CP72 by inspecting the existing Core/agent/Guardian/action tests and select the smallest reliable integration boundary. Complete and verify this one task before beginning another. Do not mark CP72 GREEN until fresh CI and deployment verification pass.
