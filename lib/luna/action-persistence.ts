@@ -4,7 +4,11 @@ import { createAuditEntry, createEvent } from "./core";
 type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: string };
 
 type UpdateBuilder = {
-  eq(column: string, value: string): UpdateBuilder | Promise<{ error: Error | null }>;
+  eq(column: string, value: string): UpdateBuilder;
+  then<TResult1 = { error: Error | null }, TResult2 = never>(
+    onfulfilled?: ((value: { error: Error | null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): PromiseLike<TResult1 | TResult2>;
 };
 
 type UpdateTable = {
