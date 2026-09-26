@@ -3,6 +3,18 @@ import test from "node:test";
 import { handleChatPost } from "./chat-handler";
 import { ExternalTrustedAuthAdapter } from "../../../lib/luna/trusted-auth";
 
+type QueryBuilder = {
+  select: () => QueryBuilder;
+  insert: () => QueryBuilder;
+  update: () => QueryBuilder;
+  eq: () => QueryBuilder;
+  order: () => QueryBuilder;
+  limit: () => QueryBuilder;
+  single: () => QueryBuilder;
+  maybeSingle: () => QueryBuilder;
+  then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise<unknown>;
+};
+
 function createQueryResult(table: string, operation: string) {
   if (table === "conversations" && operation === "insert") return { data: { id: "conversation-1" }, error: null };
   if (table === "messages" && operation === "select") return { data: [], error: null };
@@ -14,7 +26,7 @@ function createFakeSupabase() {
   return {
     from(table: string) {
       let operation = "unknown";
-      const builder: any = {
+      const builder: QueryBuilder = {
         select() { operation = "select"; return builder; },
         insert() { operation = "insert"; return builder; },
         update() { operation = "update"; return builder; },
