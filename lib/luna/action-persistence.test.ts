@@ -12,12 +12,14 @@ function createFakeSupabase(failTable?: string) {
       return {
         update(values: Record<string, unknown>) {
           calls.push({ table, operation: "update", values });
-          return {
+          const builder = {
             eq(column: string, value: string) {
               calls.push({ table, operation: "eq", column, value });
+              if (column === "id") return builder;
               return Promise.resolve({ error: failTable === table ? new Error(`${table} failed`) : null });
             },
           };
+          return builder;
         },
         insert(values: Record<string, unknown>) {
           calls.push({ table, operation: "insert", values });
@@ -45,7 +47,7 @@ test("persistAction records successful completion and success audit", async () =
   assert.deepEqual(actionUpdate?.values?.status, "completed");
   assert.deepEqual(actionUpdate?.values?.output, { results: [] });
   assert.equal(calls.some((call) => call.table === "luna_actions" && call.column === "id" && call.value === "action-1"), true);
-  assert.equal(calls.some((call) => call.table === "luna_actions" && call.column === "user_id" && call.value === "user-1"), false);
+  assert.equal(calls.some((call) => call.table === "luna_actions" && call.column === "user_id" && call.value === "user-1"), true);
 
   const eventInsert = calls.find((call) => call.table === "luna_events");
   assert.equal(eventInsert?.values?.event_type, "action.completed");
