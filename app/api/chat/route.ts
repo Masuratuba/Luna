@@ -10,6 +10,7 @@ import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
 import { ExecutionBudget } from "../../../lib/luna/execution-budget";
 import { requireUser } from "../../../lib/supabase/auth";
 import { createProviderRegistry } from "../../../lib/providers/registry";
+import { persistAction as persistLunaAction } from "../../../lib/luna/action-persistence";
 import { createToolHandlerRegistry } from "../../../lib/luna/tool-handler-registry";
 import { getOpenAI } from "../../../lib/openai";
 import { executeLunaCommand, parseLunaCommand } from "../../../lib/luna/command-capabilities";
@@ -19,19 +20,6 @@ const MAX_CHAT_MESSAGE_CHARS = 20_000;
 type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
 type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: string };
 type SearchSource = { title: string; url: string; snippet?: string };
-
-async function persistAction(supabase: SupabaseClient, userId: string, action: ReturnType<typeof createAction>, result: ActionResult, risk: string) {
-  const status = result.ok ? "completed" : "failed";
-  const eventType = result.ok ? "action.completed" : "action.failed";
-  const { error: updateError } = await supabase.from("luna_actions").update({ status, output: result.output ?? (result.error ? { error: result.error } : null), updated_at: new Date().toISOString() }).eq("id", action.id).eq("user_id", userId);
-  if (updateError) throw updateError;
-  const event = createEvent(eventType, userId, { actionId: action.id, type: action.type, status, error: result.error ?? null });
-  const audit = createAuditEntry(event, result.ok ? "success" : "failure");
-  const { error: eventError } = await supabase.from("luna_events").insert({ user_id: userId, event_type: event.type, data: event.data });
-  if (eventError) throw eventError;
-  const { error: auditError } = await supabase.from("luna_audit_log").insert({ user_id: userId, event_type: audit.type, outcome: audit.outcome, risk, data: audit.data });
-  if (auditError) throw auditError;
-}
 
 async function createPendingAction(supabase: SupabaseClient, userId: string, action: ReturnType<typeof createAction>, agent: string) {
   const { error } = await supabase.from("luna_actions").insert({ id: action.id, user_id: userId, type: action.type, status: action.status, input: action.input });
@@ -84,7 +72,7 @@ export async function POST(request: Request) {
         const execution = guardianResult.execution;
         const output = execution?.output?.result as { ok?: boolean; reason?: string } | undefined;
         const actionResult: ActionResult = execution ?? { ok: false, error: guardianResult.error ?? guardianResult.guard.reason };
-        await persistAction(supabase, user.id, action, actionResult, guardianResult.guard.risk);
+        await persistLunaAction(supabase, user.id, action, actionResult, guardianResult.guard.risk);
         if (!actionResult.ok) {
           const reply = guardianResult.guard.decision === "REQUIRE_APPROVAL" ? "Diese Aktion braucht zuerst deine ausdrückliche Freigabe." : directCommand.kind === "forget" ? "Ich konnte die Erinnerung nicht sicher löschen." : "Ich konnte die Erinnerung nicht sicher aktualisieren.";
           return NextResponse.json({ ok: false, command: directCommand.kind, reply, result: null, actionId: action.id, actionStatus: "failed" }, { status: guardianResult.guard.decision === "REQUIRE_APPROVAL" ? 403 : 502 });
@@ -187,7 +175,7 @@ export async function POST(request: Request) {
         toolRegistry,
       });
       actionResult = result.execution ?? { ok: false, error: result.error ?? result.guard.reason };
-      await persistAction(supabase, user.id, action, actionResult, guard.risk);
+      await persistLunaAction(supabase, user.id, action, actionResult, guard.risk);
       if (!actionResult.ok) {
         const failedReply = result.guard.decision === "REQUIRE_APPROVAL" ? "Diese Aktion braucht zuerst deine ausdrückliche Freigabe." : core.decision === "USE_TOOL" ? "Ich konnte die Recherche gerade nicht verlässlich ausführen." : core.decision === "CREATE_TASK" ? "Ich konnte die Aufgabe nicht ausführen." : "Ich konnte die Erinnerung nicht sicher speichern.";
         await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: failedReply });
