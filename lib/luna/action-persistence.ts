@@ -3,10 +3,12 @@ import { createAuditEntry, createEvent } from "./core";
 
 type ActionResult = { ok: boolean; output?: Record<string, unknown>; error?: string };
 
+type UpdateBuilder = {
+  eq(column: string, value: string): UpdateBuilder | Promise<{ error: Error | null }>;
+};
+
 type UpdateTable = {
-  update(values: Record<string, unknown>): {
-    eq(column: string, value: string): Promise<{ error: Error | null }>;
-  };
+  update(values: Record<string, unknown>): UpdateBuilder;
 };
 
 type InsertTable = {
@@ -34,14 +36,12 @@ export async function persistAction(
 ) {
   const status = result.ok ? "completed" : "failed";
   const eventType = result.ok ? "action.completed" : "action.failed";
-  const { error: updateError } = await updateTable(supabase, "luna_actions")
-    .update({
-      status,
-      output: result.output ?? (result.error ? { error: result.error } : null),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", action.id)
-    .then((result) => result);
+  const update = updateTable(supabase, "luna_actions").update({
+    status,
+    output: result.output ?? (result.error ? { error: result.error } : null),
+    updated_at: new Date().toISOString(),
+  });
+  const { error: updateError } = await update.eq("id", action.id).eq("user_id", userId);
 
   if (updateError) throw updateError;
 
