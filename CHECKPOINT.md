@@ -1,6 +1,6 @@
-# LUNA Checkpoint CP72 — Prepared
+# LUNA Checkpoint CP72 — Closed
 
-Status: PREPARED — work not yet completed.
+Status: **GREEN — automated acceptance and deployment verified on 2026-09-29.**
 
 CP72 is the next isolated work package after CP71.
 
@@ -59,7 +59,7 @@ Explicit non-goals:
 Next action:
 Inspect existing Core/agent/Guardian/action tests and choose the smallest reliable integration boundary for the end-to-end proof.
 
-CP72 must not be marked GREEN until the final implementation commit has fresh CI and deployment verification.
+CP72 was marked GREEN only after the integrated acceptance baseline and final closeout commit received successful CI and Vercel verification.
 
 
 ## CP72 acceptance audit (2026-09-29)
@@ -80,4 +80,7 @@ Important limitation: automated integration tests use controlled providers and f
 ## CP72 closeout
 
 CP72 automated acceptance criteria are GREEN. The Core → Guardian → registered provider → action persistence/event/audit path is covered for successful execution and provider failure. Final closeout details and verification boundaries are recorded in `CHECKPOINT-72.md`.
-The final closeout commit itself still requires fresh CI and Vercel confirmation before this status is treated as final.
+Final closeout commit `ccc27208cea2d6c23b42d361e3ef6171e89f1dd1` was verified: GitHub Actions #532 SUCCESS (TypeScript, ESLint, tests, production build) and Vercel SUCCESS. Run: https://github.com/Masuratuba/Luna/actions/runs/36608158005. Vercel: https://vercel.com/luna81/luna/HArXzttiw1Jkun1hBzHXKaZ6f4qE.
+
+
+Scope boundary: GREEN means automated acceptance criteria, quality gates, and deployment passed. Tests use controlled providers and fake persistence; live authenticated production HTTP and live Supabase write/read verification have not been claimed. See `CHECKPOINT-72.md` and `LUNA-CURRENT-STATE.md`.
