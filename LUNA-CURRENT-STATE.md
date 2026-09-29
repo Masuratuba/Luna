@@ -9,7 +9,7 @@ This file is the current handoff reference for continuing LUNA. Read it before m
 - Project: LUNA
 - Repository: `Masuratuba/Luna`
 - Branch: `main`
-- Current checkpoint: **CP72 — acceptance audit and integration verification in progress**
+- Current checkpoint: **CP72 — automated acceptance GREEN; final closeout verification pending**
 - Previous checkpoint: CP71 — Quality / CI Audit Complete
 - CP72 preparation commits: `d2dc02fa11d7a16877ede20ebd0988c1dc6e1136`, then `5daf6b02cb9636a187fea1706f171686925a8e41`
 - Production URL recorded for the project: `https://luna-luna81.vercel.app/`
@@ -93,3 +93,10 @@ Recent evidence:
 Coverage now includes route wiring contract, policy/Guardian decisions, fail-closed execution, provider invocation/error propagation, persistence, event/audit consistency, and truthful failure responses.
 
 Verification limitation: tests use a controlled provider and fake persistence. Do not claim a live authenticated production HTTP request or live Supabase integration. CP72 remains **not final GREEN** until the final documentation/implementation commit receives fresh successful CI and Vercel verification. See `CHECKPOINT-72.md` for the criteria-by-criteria audit.
+
+
+## CP72 closeout status
+
+The automated acceptance audit is complete. Integrated Core → Guardian → registered search provider → action persistence/event/audit tests pass for success and provider failure. Route wiring, explicit agent contract, Guardian bypass prevention, policy decisions and truthful failure responses are covered by tests.
+The baseline commit `85baec6c4c7e8a2bd7194ae1805604637baeee09` had GitHub Actions #529 SUCCESS and Vercel SUCCESS. Final documentation closeout commit requires fresh CI and Vercel verification.
+Live authenticated production HTTP and live Supabase writes have not been claimed.
