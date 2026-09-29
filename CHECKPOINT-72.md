@@ -151,3 +151,29 @@ Scope of GREEN:
 - CP72 automated acceptance criteria are covered by route contract, policy/Guardian, provider, persistence, audit and response tests.
 - This does not claim a live authenticated HTTP transaction against production or a live Supabase write/read verification.
 - UI remains frozen; no Voice or OAuth scope was added.
+
+## Final closeout — 2026-09-29
+
+**Status: CP72 GREEN for automated acceptance and deployment.**
+
+Final documentation/handoff commit:
+- Commit: `ccc27208cea2d6c23b42d361e3ef6171e89f1dd1`
+- GitHub Actions #532: SUCCESS.
+- Job `quality`: SUCCESS.
+- TypeScript: SUCCESS.
+- ESLint: SUCCESS.
+- Tests: SUCCESS.
+- Production build: SUCCESS.
+- Vercel combined status: SUCCESS.
+- Vercel deployment: https://vercel.com/luna81/luna/HArXzttiw1Jkun1hBzHXKaZ6f4qE
+- GitHub Actions run: https://github.com/Masuratuba/Luna/actions/runs/36608158005
+
+The integrated execution-path baseline was commit `85baec6c4c7e8a2bd7194ae1805604637baeee09`, with GitHub Actions #529 and Vercel SUCCESS. The final closeout commit above then passed a fresh full quality workflow and Vercel status check.
+
+### Scope and limits of this GREEN status
+- Automated acceptance tests cover the chat-route contract, Core decisions, agent/policy contract, Guardian enforcement and fail-closed behavior, registered provider invocation and provider failure, action persistence, event/audit consistency, and truthful failure responses.
+- The integrated path tests use controlled test providers and fake persistence.
+- A live authenticated production HTTP transaction and live Supabase write/read verification have **not** been performed or claimed.
+- UI remains frozen. No Voice implementation or Microsoft OAuth expansion was included.
+- Continue with the next checkpoint only after reading `LUNA-CURRENT-STATE.md` and the repository summary.
+
