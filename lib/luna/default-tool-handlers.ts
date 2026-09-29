@@ -1,6 +1,7 @@
 import type { ActionExecutionOutput } from "./action-executor";
 import type { LunaAction } from "./core";
 import { createProviderRegistry } from "../providers/registry";
+import type { SearchProvider } from "../providers/contracts";
 import { createToolHandlerRegistry, type ToolHandlerRegistry } from "./tool-handler-registry";
 
 function stringInput(action: LunaAction, key: string): string {
@@ -15,15 +16,15 @@ function limitInput(action: LunaAction): number | undefined {
 }
 
 /** Creates the server-side registry of concrete handlers available to Luna. */
-export function createDefaultToolHandlerRegistry(): ToolHandlerRegistry {
+export function createDefaultToolHandlerRegistry(searchProvider?: SearchProvider): ToolHandlerRegistry {
   const registry = createToolHandlerRegistry();
-  const providers = createProviderRegistry();
+  const search = searchProvider ?? createProviderRegistry().search();
 
   registry.register("search", async (action): Promise<ActionExecutionOutput> => {
     const query = stringInput(action, "query");
     if (!query) throw new Error("SEARCH_QUERY_REQUIRED");
 
-    const results = await providers.search().search({ query, limit: limitInput(action) });
+    const results = await search.search({ query, limit: limitInput(action) });
     return { query, results };
   });
 
