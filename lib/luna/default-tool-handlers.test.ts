@@ -46,3 +46,19 @@ test("CP72: default search handler rejects an empty query without calling the pr
   await assert.rejects(registry.execute(action), /SEARCH_QUERY_REQUIRED/);
   assert.equal(providerCalled, false);
 });
+
+test("CP72: provider errors propagate from the registered search handler", async () => {
+  const provider: SearchProvider = {
+    name: "failing-test-search",
+    async search() {
+      throw new Error("provider unavailable");
+    },
+  };
+  const registry = createDefaultToolHandlerRegistry(provider);
+  const action = {
+    ...createAction("tool", { tool: "search", query: "failure path" }),
+    status: "approved" as const,
+  };
+
+  await assert.rejects(registry.execute(action), /provider unavailable/);
+});
