@@ -108,7 +108,7 @@ Do not mark CP72 GREEN until the final commit has fresh CI and deployment verifi
 
 ## Acceptance criteria audit — 2026-09-29
 
-Status: **verification strengthened; final CP72 GREEN remains conditional on fresh CI and Vercel for the final checkpoint commit.**
+Status: **CP72 GREEN — automated acceptance criteria and integrated execution-path verification passed.**
 
 Evidence added during this audit:
 - `lib/luna/chat-route-contract.test.ts` verifies the chat route calls LUNA Core and Guardian, supplies the default tool registry, passes the user message as the search query, and explicitly distinguishes the selected conversation persona from the Core-selected action agent.
@@ -137,3 +137,17 @@ Verification boundary:
 - CI uses controlled test providers and fake persistence; it does not prove writes against live Supabase data.
 - Do not claim a live authenticated production HTTP test unless separately performed.
 - CP72 may be marked GREEN only after the final checkpoint documentation commit has fresh successful CI and Vercel statuses.
+
+
+## Final CP72 verification
+
+Final implementation/audit baseline before this status-only closeout:
+- Commit: `85baec6c4c7e8a2bd7194ae1805604637baeee09`
+- GitHub Actions #529: SUCCESS; TypeScript, ESLint, tests and production build all completed successfully.
+- Vercel status: SUCCESS.
+- Integrated path tests: success and provider-failure cases both passed.
+
+Scope of GREEN:
+- CP72 automated acceptance criteria are covered by route contract, policy/Guardian, provider, persistence, audit and response tests.
+- This does not claim a live authenticated HTTP transaction against production or a live Supabase write/read verification.
+- UI remains frozen; no Voice or OAuth scope was added.
