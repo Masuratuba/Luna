@@ -18,7 +18,7 @@ test("CP72 chat route is wired through Core, Guardian, and the tested default to
   // The selected UI agent is the conversational persona; Core independently
   // selects the specialized execution agent and the API exposes both explicitly.
   assert.match(source, /Conversation agent:/);
-  assert.match(source, /conversationAgent\\.name/);
+  assert.ok(source.includes("conversationAgent.name"));
   assert.match(source, /agent:\s*conversationAgent\.id/);
   assert.match(source, /actionAgent:\s*core\.agent/);
 });
