@@ -60,3 +60,18 @@ Next action:
 Inspect existing Core/agent/Guardian/action tests and choose the smallest reliable integration boundary for the end-to-end proof.
 
 CP72 must not be marked GREEN until the final implementation commit has fresh CI and deployment verification.
+
+
+## CP72 acceptance audit (2026-09-29)
+
+The acceptance audit is documented in `CHECKPOINT-72.md`. Coverage now includes:
+- chat-route wiring and explicit conversation-agent/action-agent contract;
+- Core → Guardian → registered search provider integration for success and provider failure;
+- action persistence, event/audit outcome consistency, and truthful failure responses;
+- policy, Guardian bypass prevention, and the quality gates.
+
+Latest integrated verification before this documentation update:
+- GitHub Actions #525: SUCCESS (TypeScript, ESLint, tests, production build).
+- Vercel status for commit `11b3345e6e991dbe29d28959f6655714a7ed808f`: SUCCESS.
+
+Important limitation: automated integration tests use controlled providers and fake persistence. A live authenticated production HTTP request and live Supabase writes have not been claimed. CP72 must not be marked GREEN until fresh CI and Vercel verification pass for the final checkpoint commit.
