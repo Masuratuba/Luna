@@ -14,6 +14,7 @@ import { createDefaultToolHandlerRegistry } from "../../../lib/luna/default-tool
 import { getOpenAI } from "../../../lib/openai";
 import { executeLunaCommand, parseLunaCommand } from "../../../lib/luna/command-capabilities";
 import { getLunaAgent } from "../../../lib/luna/agents";
+import { buildActionFailureResponse } from "../../../lib/luna/action-response";
 
 const MAX_CHAT_MESSAGE_CHARS = 20_000;
 type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
@@ -172,9 +173,15 @@ export async function POST(request: Request) {
       actionResult = result.execution ?? { ok: false, error: result.error ?? result.guard.reason };
       await persistLunaAction(supabase, user.id, action, actionResult, guard.risk);
       if (!actionResult.ok) {
-        const failedReply = result.guard.decision === "REQUIRE_APPROVAL" ? "Diese Aktion braucht zuerst deine ausdrückliche Freigabe." : core.decision === "USE_TOOL" ? "Ich konnte die Recherche gerade nicht verlässlich ausführen." : core.decision === "CREATE_TASK" ? "Ich konnte die Aufgabe nicht ausführen." : "Ich konnte die Erinnerung nicht sicher speichern.";
-        await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: failedReply });
-        return NextResponse.json({ ok: false, conversationId, decision: core.decision, agent: core.agent, actionId, actionStatus: "failed", error: failedReply }, { status: result.guard.decision === "REQUIRE_APPROVAL" ? 403 : 502 });
+        const failure = buildActionFailureResponse({
+          decision: core.decision as "USE_TOOL" | "CREATE_TASK" | "SAVE_MEMORY",
+          agent: core.agent,
+          actionId,
+          conversationId,
+          requiresApproval: result.guard.decision === "REQUIRE_APPROVAL",
+        });
+        await supabase.from("messages").insert({ conversation_id: conversationId, user_id: user.id, role: "assistant", content: failure.body.reply });
+        return NextResponse.json(failure.body, { status: failure.status });
       }
       if (core.decision === "SAVE_MEMORY") memorySaved = true;
       if (core.decision === "USE_TOOL") {
