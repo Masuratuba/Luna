@@ -22,14 +22,15 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await requireUser();
     const body = await request.json();
-    if (!body.title) return NextResponse.json({ error: "title is required" }, { status: 400 });
+    const title = typeof body?.title === "string" ? body.title.trim() : "";
+    if (!title) return NextResponse.json({ error: "title is required" }, { status: 400 });
 
     const { data, error } = await supabase
       .from("tasks")
       .insert({
         user_id: user.id,
         project_id: body.project_id ?? null,
-        title: String(body.title).trim(),
+        title,
         description: body.description ?? null,
         status: body.status ?? "todo",
         priority: body.priority ?? 3,
