@@ -9,14 +9,14 @@ This file is the current handoff reference for continuing LUNA. Read it before m
 - Project: LUNA
 - Repository: `Masuratuba/Luna`
 - Branch: `main`
-- Current checkpoint: **CP72 — automated acceptance GREEN; final closeout verification pending**
+- Current checkpoint: **CP72 CLOSED — automated acceptance GREEN; final CI and Vercel verified 2026-09-29**
 - Previous checkpoint: CP71 — Quality / CI Audit Complete
 - CP72 preparation commits: `d2dc02fa11d7a16877ede20ebd0988c1dc6e1136`, then `5daf6b02cb9636a187fea1706f171686925a8e41`
 - Production URL recorded for the project: `https://luna-luna81.vercel.app/`
 - UI is intentionally frozen. Do not redesign or alter the pre-Voice UI unless explicitly requested.
 - Microsoft OAuth is not part of the current development path unless explicitly resumed.
 - Login-bypass/development mode is currently used for the owner's testing.
-- CP72 is prepared only; it is **not GREEN and not complete**.
+- CP72 is closed for automated acceptance. Live authenticated production HTTP and live Supabase write/read verification remain outside the verified scope.
 
 ## Work completed through CP71
 The repository has been audited against the planned LUNA architecture. The major building blocks are present:
@@ -92,11 +92,30 @@ Recent evidence:
 
 Coverage now includes route wiring contract, policy/Guardian decisions, fail-closed execution, provider invocation/error propagation, persistence, event/audit consistency, and truthful failure responses.
 
-Verification limitation: tests use a controlled provider and fake persistence. Do not claim a live authenticated production HTTP request or live Supabase integration. CP72 remains **not final GREEN** until the final documentation/implementation commit receives fresh successful CI and Vercel verification. See `CHECKPOINT-72.md` for the criteria-by-criteria audit.
+Verification limitation: tests use a controlled provider and fake persistence. Do not claim a live authenticated production HTTP request or live Supabase integration. The final closeout commit `ccc27208cea2d6c23b42d361e3ef6171e89f1dd1` subsequently passed GitHub Actions #532 and Vercel; see final closeout below. See `CHECKPOINT-72.md` for the criteria-by-criteria audit.
 
 
 ## CP72 closeout status
 
 The automated acceptance audit is complete. Integrated Core → Guardian → registered search provider → action persistence/event/audit tests pass for success and provider failure. Route wiring, explicit agent contract, Guardian bypass prevention, policy decisions and truthful failure responses are covered by tests.
-The baseline commit `85baec6c4c7e8a2bd7194ae1805604637baeee09` had GitHub Actions #529 SUCCESS and Vercel SUCCESS. Final documentation closeout commit requires fresh CI and Vercel verification.
+The integrated baseline commit `85baec6c4c7e8a2bd7194ae1805604637baeee09` had GitHub Actions #529 SUCCESS and Vercel SUCCESS. The final documentation closeout commit was then independently verified.
 Live authenticated production HTTP and live Supabase writes have not been claimed.
+
+
+## CP72 final verified closeout — 2026-09-29
+
+- Status: **GREEN for automated acceptance, CI quality gates, and deployment**.
+- Final repository head at time of closeout: `ccc27208cea2d6c23b42d361e3ef6171e89f1dd1` (closeout documentation commit; later handoff documentation commits may follow).
+- GitHub Actions #532: SUCCESS — TypeScript, ESLint, tests, production build.
+- Vercel combined status: SUCCESS.
+- GitHub Actions: https://github.com/Masuratuba/Luna/actions/runs/36608158005
+- Vercel: https://vercel.com/luna81/luna/HArXzttiw1Jkun1hBzHXKaZ6f4qE
+- Integrated Core → Guardian → registered provider → action persistence/event/audit path is tested for success and provider failure.
+- Truthful failure responses and semantic memory validation failures are tested.
+- Limits: tests use controlled providers and fake persistence. No live authenticated production HTTP request or live Supabase write/read has been claimed.
+- UI remains frozen. Voice and Microsoft OAuth expansion are out of scope.
+- Next: plan the next checkpoint only after reviewing `REPOSITORY-SUMMARY.md`; preserve isolated task/verification workflow.
+
+## Working agreement
+
+Always verify the exact latest commit before saying "green". A Vercel deployment alone is not proof that GitHub Actions passed, and a CI pass alone is not proof of live production integration. Report separately: commit SHA, CI run, individual quality steps, Vercel status, and any live-test limits.
