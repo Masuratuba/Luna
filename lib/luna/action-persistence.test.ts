@@ -51,16 +51,19 @@ test("persistAction records successful completion and success audit", async () =
 
   const eventInsert = calls.find((call) => call.table === "luna_events");
   assert.equal(eventInsert?.values?.event_type, "action.completed");
-  assert.deepEqual(eventInsert?.values?.data, {
+  const expectedEventData = {
     actionId: "action-1",
     type: "tool",
     status: "completed",
     error: null,
-  });
+  };
+  assert.deepEqual(eventInsert?.values?.data, expectedEventData);
 
   const auditInsert = calls.find((call) => call.table === "luna_audit_log");
+  assert.equal(auditInsert?.values?.event_type, "action.completed");
   assert.equal(auditInsert?.values?.outcome, "success");
   assert.equal(auditInsert?.values?.risk, "low");
+  assert.deepEqual(auditInsert?.values?.data, expectedEventData);
 });
 
 test("persistAction records failed execution and preserves the error", async () => {
@@ -74,10 +77,19 @@ test("persistAction records failed execution and preserves the error", async () 
 
   const eventInsert = calls.find((call) => call.table === "luna_events");
   assert.equal(eventInsert?.values?.event_type, "action.failed");
+  const expectedEventData = {
+    actionId: "action-1",
+    type: "tool",
+    status: "failed",
+    error: "provider unavailable",
+  };
+  assert.deepEqual(eventInsert?.values?.data, expectedEventData);
 
   const auditInsert = calls.find((call) => call.table === "luna_audit_log");
+  assert.equal(auditInsert?.values?.event_type, "action.failed");
   assert.equal(auditInsert?.values?.outcome, "failure");
   assert.equal(auditInsert?.values?.risk, "medium");
+  assert.deepEqual(auditInsert?.values?.data, expectedEventData);
 });
 
 test("persistAction fails closed when action persistence fails", async () => {
