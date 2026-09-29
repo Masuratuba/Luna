@@ -42,3 +42,22 @@ export function buildActionFailureResponse(input: {
     },
   };
 }
+
+export type MemoryCommandFailureReason = "NO_TARGET" | "NO_REPLACEMENT" | "SENSITIVE";
+
+export function buildMemoryCommandFailureResponse(reason: MemoryCommandFailureReason) {
+  const reply = reason === "NO_TARGET"
+    ? "Sag mir bitte, was ich vergessen oder ändern soll."
+    : reason === "NO_REPLACEMENT"
+      ? "Sag mir bitte auch, auf welchen neuen Wert ich die Erinnerung ändern soll."
+      : "Die neue Information enthält sensible Zugangsdaten.";
+
+  return {
+    status: 400,
+    body: {
+      ok: false as const,
+      actionStatus: "failed" as const,
+      reply,
+    },
+  };
+}
