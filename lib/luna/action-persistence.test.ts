@@ -88,3 +88,25 @@ test("persistAction fails closed when action persistence fails", async () => {
     /luna_actions failed/,
   );
 });
+
+test("persistAction surfaces event persistence failure instead of reporting a completed write", async () => {
+  const { client, calls } = createFakeSupabase("luna_events");
+
+  await assert.rejects(
+    persistAction(client, "user-1", action, { ok: true, output: { results: [] } }, "low"),
+    /luna_events failed/,
+  );
+  assert.equal(calls.some((call) => call.table === "luna_actions" && call.operation === "update"), true);
+  assert.equal(calls.some((call) => call.table === "luna_audit_log" && call.operation === "insert"), false);
+});
+
+test("persistAction surfaces audit persistence failure instead of silently swallowing it", async () => {
+  const { client, calls } = createFakeSupabase("luna_audit_log");
+
+  await assert.rejects(
+    persistAction(client, "user-1", action, { ok: false, error: "provider unavailable" }, "medium"),
+    /luna_audit_log failed/,
+  );
+  const eventInsert = calls.find((call) => call.table === "luna_events" && call.operation === "insert");
+  assert.equal(eventInsert?.values?.event_type, "action.failed");
+});
