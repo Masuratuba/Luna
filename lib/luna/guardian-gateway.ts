@@ -46,10 +46,13 @@ export async function executeThroughGuardian(request: GuardianGatewayRequest): P
   }
   if (!guard.allowed) return { ok: false, access, guard, error: guard.reason };
 
-  // The chat route binds a server-side handler after Guardian authorization.
-  // Use the explicit registry when supplied, otherwise use that already-bound handler.
+  // When a registry is explicitly supplied, it is authoritative: never fall back
+  // to a context handler for an unregistered tool. Without a registry, preserve
+  // the legacy already-bound handler path.
   const handler = request.action.type === "tool"
-    ? request.toolRegistry?.resolve(String(request.action.input.tool ?? "").trim()) ?? request.context.handler
+    ? request.toolRegistry
+      ? request.toolRegistry.resolve(String(request.action.input.tool ?? "").trim())
+      : request.context.handler
     : request.context.handler;
 
   if (request.action.type === "tool" && !handler) {
@@ -60,7 +63,7 @@ export async function executeThroughGuardian(request: GuardianGatewayRequest): P
     ...request.context,
     role: identity?.role ?? request.context.role,
     trustedAdmin,
-    handler: handler ?? request.context.handler,
+    handler,
     gatewayAuthorized: true,
   });
   return { ok: execution.ok, access, guard, execution, error: execution.error };
