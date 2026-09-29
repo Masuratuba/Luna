@@ -75,3 +75,9 @@ Latest integrated verification before this documentation update:
 - Vercel status for commit `11b3345e6e991dbe29d28959f6655714a7ed808f`: SUCCESS.
 
 Important limitation: automated integration tests use controlled providers and fake persistence. A live authenticated production HTTP request and live Supabase writes have not been claimed. CP72 must not be marked GREEN until fresh CI and Vercel verification pass for the final checkpoint commit.
+
+
+## CP72 closeout
+
+CP72 automated acceptance criteria are GREEN. The Core → Guardian → registered provider → action persistence/event/audit path is covered for successful execution and provider failure. Final closeout details and verification boundaries are recorded in `CHECKPOINT-72.md`.
+The final closeout commit itself still requires fresh CI and Vercel confirmation before this status is treated as final.
