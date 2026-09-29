@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildActionFailureResponse } from "./action-response";
+import { buildActionFailureResponse, buildMemoryCommandFailureResponse } from "./action-response";
 
 test("CP72 point 10: failed search returns a truthful failure reply and failed status", () => {
   const response = buildActionFailureResponse({
@@ -53,4 +53,14 @@ test("CP72 point 10: task and memory failures receive decision-specific truthful
   assert.match(memory.body.reply, /konnte die Erinnerung nicht sicher speichern/i);
   assert.equal(task.body.actionStatus, "failed");
   assert.equal(memory.body.actionStatus, "failed");
+});
+
+test("CP72 point 10: memory validation failures are returned as failed, not completed", () => {
+  for (const reason of ["NO_TARGET", "NO_REPLACEMENT", "SENSITIVE"] as const) {
+    const response = buildMemoryCommandFailureResponse(reason);
+    assert.equal(response.status, 400);
+    assert.equal(response.body.ok, false);
+    assert.equal(response.body.actionStatus, "failed");
+    assert.doesNotMatch(response.body.reply, /gelöscht|aktualisiert|gespeichert|erledigt/i);
+  }
 });
