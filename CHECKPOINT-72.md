@@ -104,3 +104,36 @@ A fail-closed `tool-handler-registry` exists, but the chat search path currently
 Start by inspecting the existing Core/agent/Guardian/action tests and choose the smallest reliable integration boundary for the end-to-end proof.
 
 Do not mark CP72 GREEN until the final commit has fresh CI and deployment verification.
+
+
+## Acceptance criteria audit — 2026-09-29
+
+Status: **verification strengthened; final CP72 GREEN remains conditional on fresh CI and Vercel for the final checkpoint commit.**
+
+Evidence added during this audit:
+- `lib/luna/chat-route-contract.test.ts` verifies the chat route calls LUNA Core and Guardian, supplies the default tool registry, passes the user message as the search query, and explicitly distinguishes the selected conversation persona from the Core-selected action agent.
+- `lib/luna/core-guardian-flow.test.ts` verifies Core decision/agent dispatch through Guardian and fail-closed behavior when a handler is missing.
+- `lib/luna/default-tool-handlers.test.ts` verifies provider invocation, empty-query rejection, and provider-error propagation.
+- `lib/luna/chat-execution-flow.test.ts` exercises the integrated Core → Guardian/policy → registered provider → action persistence → event/audit path for both success and provider failure.
+- `lib/luna/action-persistence.test.ts` verifies user-scoped action updates, success/failure event and audit consistency, and surfaced persistence errors.
+- `lib/luna/action-response.test.ts` verifies truthful failure responses and memory-validation failure statuses.
+
+Criteria review:
+1. Normal request enters chat route — route contract test verifies wiring; integrated execution test verifies the downstream request path. This is automated test coverage, not a live authenticated HTTP request against production.
+2. Expected Core decision — verified in integrated research-flow test.
+3. Expected agent selection — Core-selected research agent verified; UI-selected conversation persona versus action agent is explicitly documented and contract-tested.
+4. Agent policy permits/rejects correctly — policy and Guardian Gateway tests cover allowed research and denied capabilities.
+5. Guardian security decision — integrated flow asserts access and Guardian allow; guard tests cover rejection cases.
+6. Execution cannot bypass Guardian — executor/Gateway tests enforce gateway authorization.
+7. Intended provider/tool invoked — registered default search handler is tested with a controlled provider; integrated flow asserts the provider was called.
+8. Success/failure persistence — persistence unit tests and integrated success/failure flow cover both outcomes.
+9. Event/audit reflect outcome — success/failure event type, audit outcome, action status and error data are asserted.
+10. Truthful final action status — failure response tests and route contract cover failure handling; memory validation failures are persisted as failed.
+11. Existing tests — latest integrated test run passed.
+12. TypeScript, ESLint, tests, production build — latest integrated test run passed.
+13. Vercel — deployment status for the integrated test commit reported success.
+
+Verification boundary:
+- CI uses controlled test providers and fake persistence; it does not prove writes against live Supabase data.
+- Do not claim a live authenticated production HTTP test unless separately performed.
+- CP72 may be marked GREEN only after the final checkpoint documentation commit has fresh successful CI and Vercel statuses.
