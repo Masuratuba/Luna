@@ -9,9 +9,8 @@ import { updateMemory } from "../../../lib/luna/memory/update";
 import { executeThroughGuardian } from "../../../lib/luna/guardian-gateway";
 import { ExecutionBudget } from "../../../lib/luna/execution-budget";
 import { requireUser } from "../../../lib/supabase/auth";
-import { createProviderRegistry } from "../../../lib/providers/registry";
 import { persistAction as persistLunaAction } from "../../../lib/luna/action-persistence";
-import { createToolHandlerRegistry } from "../../../lib/luna/tool-handler-registry";
+import { createDefaultToolHandlerRegistry } from "../../../lib/luna/default-tool-handlers";
 import { getOpenAI } from "../../../lib/openai";
 import { executeLunaCommand, parseLunaCommand } from "../../../lib/luna/command-capabilities";
 import { getLunaAgent } from "../../../lib/luna/agents";
@@ -131,17 +130,13 @@ export async function POST(request: Request) {
 
     if (actionDecision) {
       const actionType = core.decision === "CREATE_TASK" ? "task" : core.decision === "SAVE_MEMORY" ? "memory" : "tool";
-      const actionInput = core.decision === "USE_TOOL" ? { message, conversationId, agent: core.agent, tool: "search" } : { message, conversationId, agent: core.agent };
+      const actionInput = core.decision === "USE_TOOL" ? { message, query: message, conversationId, agent: core.agent, tool: "search" } : { message, conversationId, agent: core.agent };
       const action = createAction(actionType, actionInput);
       actionId = action.id;
       await createPendingAction(supabase, user.id, action, core.agent);
       const explicitMemory = extractExplicitMemory(message);
       const capability = core.decision === "CREATE_TASK" ? "task.create" : core.decision === "SAVE_MEMORY" ? "memory.write" : "search";
-      const toolRegistry = createToolHandlerRegistry();
-      toolRegistry.register("search", async (toolAction) => {
-        const results = await createProviderRegistry().search().search({ query: String(toolAction.input.query ?? message), limit: 5 });
-        return { results };
-      });
+      const toolRegistry = createDefaultToolHandlerRegistry();
       const result = await executeThroughGuardian({
         agent: core.agent,
         capability,
