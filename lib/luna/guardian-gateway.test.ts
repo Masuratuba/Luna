@@ -125,3 +125,27 @@ test("Guardian Gateway rejects a mismatched caller subject before execution", as
   assert.equal(called, false);
   assert.match(result.error ?? "", /identity|authentication/i);
 });
+
+
+test("an explicit registry cannot be bypassed by a fallback context handler", async () => {
+  let fallbackCalled = false;
+  const result = await executeThroughGuardian({
+    agent: "research",
+    capability: "search",
+    mode: "read",
+    action: createAction("tool", { tool: "search" }),
+    context: {
+      ...trustedContext,
+      handler: async () => {
+        fallbackCalled = true;
+        return { result: "must-not-run" };
+      },
+    },
+    toolRegistry: createToolHandlerRegistry(),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.execution, undefined);
+  assert.equal(fallbackCalled, false);
+  assert.match(result.error ?? "", /not registered/i);
+});
