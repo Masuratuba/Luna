@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "../../../../lib/supabase/auth";
 
-type Params = { params: Promise<{ id: string }> };\n\nconst TASK_STATUSES = new Set(["todo", "in_progress", "completed", "cancelled"]);
+type Params = { params: Promise<{ id: string }> };
+
+const TASK_STATUSES = new Set(["todo", "in_progress", "completed", "cancelled"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isUuid(value: unknown): value is string {
@@ -20,7 +22,6 @@ function validateTaskFields(body: Record<string, unknown>): string | null {
   if (body.due_at !== undefined && !isValidDueAt(body.due_at)) return "due_at must be a valid date-time string or null";
   return null;
 }
-
 
 
 export async function PATCH(request: Request, { params }: Params) {
