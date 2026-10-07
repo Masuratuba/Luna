@@ -12,6 +12,10 @@ function isValidDueAt(value: unknown): value is string | null {
   return value === null || (typeof value === "string" && !Number.isNaN(Date.parse(value)));
 }
 
+function isValidPriority(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5;
+}
+
 function validateTaskFields(body: Record<string, unknown>, partial = false): string | null {
   if (!partial || body.project_id !== undefined) {
     if (body.project_id !== null && body.project_id !== undefined && !isUuid(body.project_id)) return "project_id must be a valid UUID or null";
@@ -23,7 +27,7 @@ function validateTaskFields(body: Record<string, unknown>, partial = false): str
     if (body.status !== undefined && (typeof body.status !== "string" || !TASK_STATUSES.has(body.status))) return "status is invalid";
   }
   if (!partial || body.priority !== undefined) {
-    if (body.priority !== undefined && (!Number.isInteger(body.priority) || body.priority < 1 || body.priority > 5)) return "priority must be an integer between 1 and 5";
+    if (body.priority !== undefined && !isValidPriority(body.priority)) return "priority must be an integer between 1 and 5";
   }
   if (!partial || body.due_at !== undefined) {
     if (!isValidDueAt(body.due_at ?? null)) return "due_at must be a valid date-time string or null";
