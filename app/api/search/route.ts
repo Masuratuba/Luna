@@ -5,7 +5,7 @@ import { createProviderRegistry } from "../../../lib/providers/registry";
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
 
     let body: unknown;
     try {
