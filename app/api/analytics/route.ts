@@ -6,7 +6,7 @@ import { parseAnalyticsRequest, validateAnalyticsResult } from "../../../lib/pro
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const access = getAgentAccess("analysis", "analytics", "read");
     if (!access.allowed) return NextResponse.json({ error: "analytics capability denied" }, { status: 403 });
 
