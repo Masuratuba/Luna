@@ -29,7 +29,7 @@ function validateTaskFields(body: Record<string, unknown>): string | null {
 
 export async function PATCH(request: Request, { params }: Params) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await params;
     const body = await request.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -59,9 +59,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await params;
     const { error } = await supabase.from("tasks").delete().eq("id", id).eq("user_id", user.id);
     if (error) throw error;

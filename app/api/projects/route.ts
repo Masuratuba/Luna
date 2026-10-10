@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "../../../lib/supabase/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { data, error } = await supabase
       .from("projects")
       .select("*")
@@ -20,7 +20,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const body = await request.json();
     if (!body.name) return NextResponse.json({ error: "name is required" }, { status: 400 });
 

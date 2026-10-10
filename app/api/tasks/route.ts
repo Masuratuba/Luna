@@ -35,9 +35,9 @@ function validateTaskFields(body: Record<string, unknown>, partial = false): str
   return null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { data, error } = await supabase
       .from("tasks")
       .select("*")
@@ -54,7 +54,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const body = await request.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json({ error: "request body must be an object" }, { status: 400 });

@@ -3,9 +3,9 @@ import { requireUser } from "../../../../lib/supabase/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await params;
     const { data, error } = await supabase.from("projects").select("*").eq("id", id).eq("user_id", user.id).single();
     if (error) return NextResponse.json({ error: "project not found" }, { status: 404 });
@@ -18,7 +18,7 @@ export async function GET(_: Request, { params }: Params) {
 
 export async function PATCH(request: Request, { params }: Params) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await params;
     const body = await request.json();
     const allowed = { name: body.name, description: body.description, status: body.status, metadata: body.metadata };
@@ -32,9 +32,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await params;
     const { error } = await supabase.from("projects").delete().eq("id", id).eq("user_id", user.id);
     if (error) throw error;
