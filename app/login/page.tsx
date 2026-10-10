@@ -1,65 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
+import { useState } from "react";
 
 export default function LoginPage() {
-  const [authError, setAuthError] = useState("");
-  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const error = new URLSearchParams(window.location.search).get("error");
-    if (error === "missing_code") {
-      setAuthError("Anmeldung fehlgeschlagen: Der Auth-Code fehlt.");
-    } else if (error === "missing_supabase_config") {
-      setAuthError("Anmeldung fehlgeschlagen: Supabase ist nicht konfiguriert.");
-    } else if (error) {
-      setAuthError(`Anmeldung fehlgeschlagen: ${error}`);
-    }
-  }, []);
-
-  async function sendMagicLink(event: React.FormEvent) {
+  async function signIn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email.trim() || loading) return;
+    if (!password || loading) return;
     setLoading(true);
     setStatus("");
-
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/` },
+      const response = await fetch("/api/owner-login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password }),
       });
-      setStatus(error ? error.message : "Login-Link wurde an deine E-Mail gesendet.");
-    } catch {
-      setStatus("Supabase ist noch nicht vollständig konfiguriert.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function signInWithMicrosoft() {
-    if (loading) return;
-    setLoading(true);
-    setStatus("");
-
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "azure",
-        options: {
-          scopes: "email offline_access",
-          redirectTo: `${window.location.origin}/auth/callback?next=/`,
-        },
-      });
-      if (error) {
-        setStatus(error.message);
-        setLoading(false);
+      const result = await response.json() as { error?: string };
+      if (!response.ok) {
+        setStatus(result.error || "Anmeldung fehlgeschlagen.");
+        return;
       }
+      window.location.assign("/");
     } catch {
-      setStatus("Microsoft-Anmeldung konnte nicht gestartet werden.");
+      setStatus("Verbindung fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
       setLoading(false);
     }
   }
@@ -72,21 +39,20 @@ export default function LoginPage() {
         <header className="luna-brand">🌙 LUNA</header>
         <div className="luna-panel">
           <h1>Anmelden</h1>
-          <p>Deine LUNA-Daten bleiben deinem Konto zugeordnet.</p>
-
-          {authError && <p role="alert">{authError}</p>}
-
-          <button className="luna-microsoft" type="button" onClick={signInWithMicrosoft} disabled={loading}>
-            {loading ? "…" : "Mit Microsoft anmelden"}
-          </button>
-
-          <div className="luna-divider"><span>oder per E-Mail</span></div>
-
-          <form className="luna-input" onSubmit={sendMagicLink}>
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-Mail-Adresse" required autoComplete="email" />
+          <p>Dein persönlicher Zugang zu LUNA.</p>
+          <form className="luna-input" onSubmit={signIn}>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Passwort"
+              required
+              autoComplete="current-password"
+              aria-label="Passwort"
+            />
             <button type="submit" disabled={loading}>{loading ? "…" : "→"}</button>
           </form>
-          {status && <p role="status">{status}</p>}
+          {status && <p role="alert">{status}</p>}
         </div>
       </section>
     </main>
