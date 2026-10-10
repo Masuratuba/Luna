@@ -52,7 +52,7 @@ export async function GET(request: Request, context: RouteContext) {
 
 export async function DELETE(request: Request, context: RouteContext) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await context.params;
 
     const { error } = await supabase
