@@ -37,10 +37,7 @@ export async function verifyOwnerSession(token: string | undefined, secret: stri
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   try {
-    const expected = await signature(parts[0], secret);
-    const a = new TextEncoder().encode(parts[1]);
-    const b = new TextEncoder().encode(expected);
-    if (a.length !== b.length || !await crypto.subtle.verify(
+    if (!await crypto.subtle.verify(
       "HMAC",
       await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]),
       decodeBytes(parts[1]),
