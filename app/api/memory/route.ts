@@ -13,7 +13,7 @@ function errorResponse(error: unknown, operation: string) {
 
 export async function GET(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const query = new URL(request.url).searchParams.get("q")?.trim().slice(0, 500);
     let builder = supabase
       .from("memories")
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const body = await request.json();
     const content = typeof body.content === "string" ? body.content.trim() : "";
     const type = typeof body.type === "string" ? body.type as MemoryType : "";
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const body = await request.json();
     const id = typeof body.id === "string" ? body.id.trim() : "";
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
@@ -107,7 +107,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
     const { data, error } = await supabase.from("memories").delete().eq("id", id).eq("user_id", user.id).select("id").maybeSingle();

@@ -7,7 +7,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: Params) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await params;
     const body = await request.json();
     const update: Record<string, unknown> = {};
@@ -64,9 +64,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   try {
-    const { supabase, user } = await requireUser();
+    const { supabase, user } = await requireUser(request);
     const { id } = await params;
     const { data, error } = await supabase
       .from("memories")
