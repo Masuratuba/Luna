@@ -1,11 +1,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isLoginBypassed } from "./mode";
+import { OWNER_SESSION_COOKIE, verifyOwnerSession } from "./owner-session";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   if (isLoginBypassed()) return supabaseResponse;
+
+  const ownerSecret = process.env.LUNA_OWNER_SECRET;
+  const ownerUserId = process.env.LUNA_OWNER_USER_ID;
+  const ownerSession = await verifyOwnerSession(request.cookies.get(OWNER_SESSION_COOKIE)?.value, ownerSecret);
+  if (ownerSecret && ownerUserId && ownerSession?.id === ownerUserId) {
+    if (request.nextUrl.pathname === "/login") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey =
