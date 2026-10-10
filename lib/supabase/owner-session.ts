@@ -13,15 +13,19 @@ function decodeBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
+function asBufferSource(bytes: Uint8Array): ArrayBuffer {
+  return bytes.slice().buffer as ArrayBuffer;
+}
+
 async function signature(payload: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    asBufferSource(new TextEncoder().encode(secret)),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign", "verify"],
   );
-  return encodeBytes(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload))));
+  return encodeBytes(new Uint8Array(await crypto.subtle.sign("HMAC", key, asBufferSource(new TextEncoder().encode(payload)))));
 }
 
 export async function createOwnerSession(userId: string, secret: string): Promise<string> {
@@ -39,9 +43,9 @@ export async function verifyOwnerSession(token: string | undefined, secret: stri
   try {
     if (!await crypto.subtle.verify(
       "HMAC",
-      await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]),
-      decodeBytes(parts[1]),
-      new TextEncoder().encode(parts[0]),
+      await crypto.subtle.importKey("raw", asBufferSource(new TextEncoder().encode(secret)), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]),
+      asBufferSource(decodeBytes(parts[1])),
+      asBufferSource(new TextEncoder().encode(parts[0])),
     )) return null;
     const payload = JSON.parse(new TextDecoder().decode(decodeBytes(parts[0]))) as { sub?: string; exp?: number };
     if (!payload.sub || !payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
