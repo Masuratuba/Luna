@@ -79,12 +79,12 @@ test("Guard allows authenticated user-owned task creation without a second appro
   assert.equal(execution.decision, "ALLOW");
 });
 
-test("Guard still requires approval for destructive task actions", () => {
+test("Guard denies destructive task actions unless explicitly confirmed", () => {
   const result = checkGuard({
     action: createAction("task", { destructive: true }),
     authenticated: true,
   });
   assert.equal(result.allowed, false);
   assert.equal(result.risk, "CRITICAL");
-  assert.equal(result.decision, "REQUIRE_APPROVAL");
+  assert.equal(result.decision, "DENY");
 });
