@@ -191,3 +191,64 @@ a { color: inherit; }
   .luna-nav-links a { font-size: 11px; }
   .luna-page-heading { flex-direction: column; }
 }
+
+
+/* Reference-alignment pass: richer deep-space atmosphere and luminous Luna core */
+.luna-background {
+  background:
+    radial-gradient(ellipse at 50% 31%, rgba(33,87,165,.25), transparent 25%),
+    radial-gradient(ellipse at 50% 48%, rgba(31,67,126,.18), transparent 38%),
+    radial-gradient(ellipse at 12% 54%, rgba(36,77,139,.2), transparent 28%),
+    radial-gradient(ellipse at 88% 54%, rgba(73,48,126,.18), transparent 30%),
+    #02040a;
+}
+.luna-background::before {
+  opacity: .9;
+  background-image:
+    radial-gradient(circle at 4% 12%, #d7e7ff 0 1px, transparent 1.8px),
+    radial-gradient(circle at 13% 38%, rgba(152,194,255,.8) 0 1px, transparent 2px),
+    radial-gradient(circle at 23% 17%, rgba(255,255,255,.7) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 31% 78%, rgba(168,201,255,.7) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 44% 11%, rgba(255,255,255,.8) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 59% 22%, rgba(177,209,255,.7) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 69% 73%, rgba(255,255,255,.65) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 79% 32%, rgba(176,199,255,.8) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 93% 14%, rgba(255,255,255,.75) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 96% 82%, rgba(163,190,255,.65) 0 1px, transparent 1.8px);
+  animation: luna-star-drift 28s linear infinite alternate;
+}
+.luna-background::after {
+  background:
+    radial-gradient(ellipse at 50% 34%, transparent 0 20%, rgba(1,3,8,.14) 60%, rgba(0,0,0,.72) 100%),
+    linear-gradient(180deg, rgba(2,4,9,.02), rgba(2,4,9,.64));
+}
+.luna-orb { filter: drop-shadow(0 0 15px rgba(71,153,255,.72)) drop-shadow(0 0 42px rgba(38,104,220,.38)); }
+.luna-orb-glow {
+  inset: -35px;
+  background: radial-gradient(circle, rgba(65,145,255,.32), rgba(48,91,184,.13) 38%, transparent 70%);
+  animation: luna-core-pulse 4.5s ease-in-out infinite;
+}
+.luna-orb-core {
+  background:
+    radial-gradient(ellipse at 33% 22%, rgba(255,255,255,.95), transparent 8%),
+    radial-gradient(circle at 30% 27%, #c6e7ff 0 4%, #548fe0 18%, #173a77 43%, #09172e 69%, #02050c 100%);
+  box-shadow: inset -17px -13px 24px rgba(0,0,0,.74), inset 8px 6px 18px rgba(170,215,255,.3), 0 0 0 1px rgba(104,173,255,.65), 0 0 18px rgba(46,136,255,.85), 0 0 45px rgba(31,100,230,.38);
+}
+.luna-orb-core::before {
+  background: rgba(9,23,49,.56);
+  box-shadow: 34px 24px 0 3px rgba(9,23,49,.45), 15px 46px 0 1px rgba(9,23,49,.55), 47px 6px 0 1px rgba(9,23,49,.4);
+}
+.luna-orbit { border-color: rgba(94,166,255,.36); box-shadow: 0 0 16px rgba(44,125,255,.12); }
+.luna-orbit-two { border-color: rgba(130,157,255,.19); }
+.luna-orbit::after { background: #eaf5ff; box-shadow: 0 0 8px #6db7ff, 0 0 19px #3b82f6; }
+.luna-topbar, .luna-chat, .luna-work-card, .luna-agent-card, .luna-page-panel {
+  border-color: rgba(104,155,237,.2);
+  box-shadow: inset 0 1px rgba(215,233,255,.035), 0 12px 36px rgba(0,0,0,.22);
+}
+.luna-work-card.primary { border-color: rgba(74,145,255,.52); box-shadow: inset 0 1px rgba(215,233,255,.08), 0 0 25px rgba(40,112,238,.09); }
+.luna-nav-links a.active { color: #f4f8ff; background: linear-gradient(135deg, rgba(34,100,228,.4), rgba(104,68,190,.24)); box-shadow: inset 0 0 0 1px rgba(119,174,255,.22); }
+@keyframes luna-core-pulse { 0%,100% { opacity:.72; transform:scale(.96); } 50% { opacity:1; transform:scale(1.06); } }
+@keyframes luna-star-drift { from { transform:translate3d(0,0,0); } to { transform:translate3d(-7px,5px,0); } }
+@media (prefers-reduced-motion: reduce) {
+  .luna-background::before, .luna-orb-glow { animation: none; }
+}
