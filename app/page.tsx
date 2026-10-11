@@ -50,12 +50,12 @@ export default async function Home({
         <nav className="luna-topbar" aria-label="LUNA Navigation">
           <Link className="luna-nav-brand" href="/" aria-label="LUNA Startseite"><span>◐</span> LUNA</Link>
           <div className="luna-nav-links">
-            <a className="active" href="/#chat" aria-current="page">Chat</a>
-            <a href="/tasks">Aufgaben</a>
-            <a href="/agents">Agenten</a>
-            <a href="/projects">Projekte</a>
-            <a href="/memory">Memory</a>
-            <a href="/tools">Tools</a>
+            <Link className="active" href="/#chat" aria-current="page">Chat</Link>
+            <Link href="/tasks">Aufgaben</Link>
+            <Link href="/agents">Agenten</Link>
+            <Link href="/projects">Projekte</Link>
+            <Link href="/memory">Memory</Link>
+            <Link href="/tools">Tools</Link>
           </div>
           <a className="luna-nav-profile" href="#profile" aria-label="Profil">◯</a>
         </nav>
@@ -79,16 +79,16 @@ export default async function Home({
             <span><strong>Neuer Chat</strong><small>Mit LUNA arbeiten</small></span>
             <b>→</b>
           </a>
-          <a className="luna-work-card" href="/agents">
+          <Link className="luna-work-card" href="/agents">
             <span className="work-icon">◈</span>
             <span><strong>Agenten</strong><small>{lunaAgents.length} Spezialisten verfügbar</small></span>
             <b>→</b>
-          </a>
-          <a className="luna-work-card" href="/tasks">
+          </Link>
+          <Link className="luna-work-card" href="/tasks">
             <span className="work-icon">✓</span>
             <span><strong>Aufgaben</strong><small>Eigener Bereich für deine Aufgaben</small></span>
             <b>→</b>
-          </a>
+          </Link>
         </section>
 
         <section id="chat" className="luna-chat-section" aria-label="LUNA Chat">
