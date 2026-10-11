@@ -83,7 +83,7 @@ export default async function Home({
             <span><strong>Agenten</strong><small>{lunaAgents.length} Spezialisten verfügbar</small></span>
             <b>→</b>
           </a>
-          <a className="luna-work-card" href="/tools">
+          <a className="luna-work-card" href="/tasks">
             <span className="work-icon">✓</span>
             <span><strong>Aufgaben</strong><small>Eigener Bereich für deine Aufgaben</small></span>
             <b>→</b>
