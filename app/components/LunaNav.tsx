@@ -18,9 +18,9 @@ export default function LunaNav() {
     <nav className="luna-topbar" aria-label="LUNA Navigation">
       <Link className="luna-nav-brand" href="/" aria-label="LUNA Startseite"><span>◐</span> LUNA</Link>
       <div className="luna-nav-links">
-        {links.map((link) => <a key={link.href} className={pathname === link.href ? "active" : ""} href={link.href} aria-current={pathname === link.href ? "page" : undefined}>{link.label}</a>)}
+        {links.map((link) => <Link key={link.href} className={pathname === link.href ? "active" : ""} href={link.href} aria-current={pathname === link.href ? "page" : undefined}>{link.label}</Link>)}
       </div>
-      <Link className="luna-nav-profile" href="/settings" aria-label="Einstellungen">◯</Link>
+      <Link className="luna-nav-profile" href="/#profile" aria-label="Profil">◯</Link>
     </nav>
   );
 }
