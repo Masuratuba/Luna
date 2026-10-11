@@ -90,11 +90,13 @@ test("PATCH scopes updates by both task id and user id, and ignores unapproved f
 });
 
 test("PATCH rejects empty or invalid changes and maps missing rows to 404", async () => {
-  const mock = mockSupabase({ data: null, error: new Error("not found") });
+  const mock = mockSupabase({ data: null, error: Object.assign(new Error("not found"), { code: "PGRST116" }) });
   const handlers = createTaskItemHandlers(auth(mock.supabase));
   assert.equal((await handlers.PATCH(request("PATCH", {}), { params: Promise.resolve({ id: "missing" }) })).status, 400);
   assert.equal((await handlers.PATCH(request("PATCH", { status: "alien" }), { params: Promise.resolve({ id: "missing" }) })).status, 400);
   assert.equal((await handlers.PATCH(request("PATCH", { title: "Valid" }), { params: Promise.resolve({ id: "missing" }) })).status, 404);
+  const broken = createTaskItemHandlers(auth(mockSupabase({ error: new Error("database unavailable") }).supabase));
+  assert.equal((await broken.PATCH(request("PATCH", { title: "Valid" }), { params: Promise.resolve({ id: "t1" }) })).status, 500);
 });
 
 test("DELETE scopes deletion to the authenticated owner and reports failures", async () => {
