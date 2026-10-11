@@ -15,6 +15,7 @@ import { getOpenAI } from "../../../lib/openai";
 import { executeLunaCommand, parseLunaCommand } from "../../../lib/luna/command-capabilities";
 import { getLunaAgent } from "../../../lib/luna/agents";
 import { buildActionFailureResponse, buildMemoryCommandFailureResponse } from "../../../lib/luna/action-response";
+import { parseTaskInput } from "../../../lib/luna/task-parser";
 
 const MAX_CHAT_MESSAGE_CHARS = 20_000;
 type SupabaseClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
@@ -31,9 +32,6 @@ async function createPendingAction(supabase: SupabaseClient, userId: string, act
   if (auditError) throw auditError;
 }
 
-function taskTitle(message: string) {
-  return message.replace(/^\s*(bitte\s+)?(erstelle|erstell|mach|lege|setze)\s+(mir\s+)?(eine?\s+)?(aufgabe|task)\s*[:,-]?\s*/i, "").trim().slice(0, 200) || message.slice(0, 200);
-}
 
 export async function POST(request: Request) {
   try {
@@ -159,7 +157,7 @@ export async function POST(request: Request) {
           budget,
           handler: async () => {
             if (core.decision === "CREATE_TASK") {
-              const { data, error } = await supabase.from("tasks").insert({ user_id: user.id, title: taskTitle(message), status: "todo", priority: 3, description: message }).select("id, title, status").single();
+              const { data, error } = await supabase.from("tasks").insert({ user_id: user.id, title: parseTaskInput(message).title, status: "todo", priority: 3, description: parseTaskInput(message).description }).select("id, title, status").single();
               if (error) throw error;
               return { task: data };
             }
