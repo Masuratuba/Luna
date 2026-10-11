@@ -48,6 +48,11 @@ export function checkGuard(request: GuardRequest): GuardResult {
   const trustedAdmin = isTrustedAdmin(request.trustedAdmin);
   if (!request.authenticated && !trustedAdmin) return { decision: "DENY", allowed: false, risk, reason: "authentication required" };
   if (risk === "SAFE") return { decision: "ALLOW", allowed: true, risk, reason: "safe action" };
+  // Explicit, user-owned task creation is a reversible authenticated operation.
+  // Keep it PROTECTED for audit visibility, but don't require a second approval.
+  if (request.action.type === "task" && request.authenticated && request.action.input.destructive !== true) {
+    return { decision: "ALLOW", allowed: true, risk, reason: "authenticated user-owned task creation" };
+  }
   // Saving an explicit, non-sensitive user memory is an authenticated user-owned operation.
   // It is classified as PROTECTED for audit visibility, but must not require a second approval.
   if (request.action.type === "memory" && request.authenticated) return { decision: "ALLOW", allowed: true, risk, reason: "authenticated user memory capture" };
@@ -73,7 +78,9 @@ export function evaluateGuard(input: GuardInput): GuardResult {
   }
   if (input.decision === "USE_TOOL" && !trustedAdmin) return { decision: "ALLOW", allowed: true, risk: "SAFE", reason: "read-only research request" };
   if (input.decision === "SAVE_MEMORY" && !trustedAdmin) return { decision: "ALLOW", allowed: true, risk: "PROTECTED", reason: "authenticated user memory capture" };
-  if (input.decision === "CREATE_TASK" && !trustedAdmin) return { decision: "REQUIRE_APPROVAL", allowed: false, risk: "PROTECTED", reason: "protected action requires explicit approval" };
+  // CREATE_TASK is an explicit, authenticated request to create data owned by that same user.
+  // The action remains protected for audit, but no second confirmation is necessary.
+  if (input.decision === "CREATE_TASK" && !trustedAdmin) return { decision: "ALLOW", allowed: true, risk: "PROTECTED", reason: "authenticated user-owned task creation" };
   return { decision: "ALLOW", allowed: true, risk: "SAFE", reason: trustedAdmin ? "trusted admin authorization" : "safe request" };
 }
 export function getGuardPolicy() {
