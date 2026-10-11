@@ -60,13 +60,31 @@ test("Guard allows authenticated explicit memory capture", () => {
   assert.equal(result.decision, "ALLOW");
 });
 
-test("Guard still blocks protected task requests without approval", () => {
-  const result = evaluateGuard({
+test("Guard allows authenticated user-owned task creation without a second approval", () => {
+  const decision = evaluateGuard({
     userId: "user-1",
-    message: "Erstelle eine Aufgabe",
+    message: "Erstelle eine Aufgabe mit dem Titel \"Luna 001\"",
     decision: "CREATE_TASK",
   });
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.risk, "PROTECTED");
+  assert.equal(decision.decision, "ALLOW");
+
+  const execution = checkGuard({
+    action: createAction("task", { title: "Luna 001" }),
+    authenticated: true,
+  });
+  assert.equal(execution.allowed, true);
+  assert.equal(execution.risk, "PROTECTED");
+  assert.equal(execution.decision, "ALLOW");
+});
+
+test("Guard still requires approval for destructive task actions", () => {
+  const result = checkGuard({
+    action: createAction("task", { destructive: true }),
+    authenticated: true,
+  });
   assert.equal(result.allowed, false);
-  assert.equal(result.risk, "PROTECTED");
+  assert.equal(result.risk, "CRITICAL");
   assert.equal(result.decision, "REQUIRE_APPROVAL");
 });
