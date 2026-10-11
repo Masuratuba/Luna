@@ -1,0 +1,9 @@
+import LunaNav from "../components/LunaNav";
+import { lunaAgents } from "../../lib/luna/agents";
+
+const icons: Record<string, string> = { luna: "✦", research: "⌕", memory: "◌", planner: "◫", action: "↗", security: "◈", document: "▤", coding: "⌘", analysis: "Σ", shop: "◇" };
+const accents: Record<string, string> = { luna: "violet", research: "blue", memory: "silver", planner: "cyan", action: "green", security: "amber", document: "indigo", coding: "pink", analysis: "sky", shop: "gold" };
+
+export default function AgentsPage() {
+  return <main className="luna-shell"><div className="luna-background" aria-hidden="true" /><div className="luna-overlay" /><section className="luna-content"><LunaNav /><header className="luna-page-hero"><div className="luna-orb" aria-hidden="true"><div className="luna-orb-glow" /><div className="luna-orb-core" /></div><div className="luna-wordmark">LUNA</div><p className="luna-tagline">Spezialisten für jede Aufgabe</p></header><section className="luna-page-panel"><div className="luna-page-heading"><div><span className="eyebrow">AGENT DIRECTOR</span><h1>Deine Agenten</h1><p>Wähle einen Spezialisten und starte direkt einen Chat mit ihm.</p></div><span className="section-count">{lunaAgents.length} verfügbar</span></div><div className="luna-agent-grid luna-agent-grid-page">{lunaAgents.map((agent) => <a className={`luna-agent-card ${accents[agent.id] ?? "blue"}`} href={`/?agent=${encodeURIComponent(agent.id)}#chat`} key={agent.id}><span className="agent-icon">{icons[agent.id] ?? "✦"}</span><span className="agent-copy"><strong>{agent.name}</strong><small>{agent.description}</small><small className="agent-capabilities">{agent.capabilities.join(" · ")}</small></span><span className="agent-arrow">→</span></a>)}</div></section><footer className="luna-footer"><span>LUNA · Personal AI Assistant</span><span className="footer-status"><i /> Agentenübersicht</span></footer></section></main>;
+}

@@ -1,0 +1,5 @@
+import LunaNav from "../components/LunaNav";
+
+export default function MemoryPage() {
+  return <main className="luna-shell"><div className="luna-background" aria-hidden="true" /><div className="luna-overlay" /><section className="luna-content"><LunaNav /><header className="luna-page-hero"><div className="luna-orb" aria-hidden="true"><div className="luna-orb-glow" /><div className="luna-orb-core" /></div><div className="luna-wordmark">LUNA</div><p className="luna-tagline">Kontext, der bleibt</p></header><section className="luna-page-panel"><div className="luna-page-heading"><div><span className="eyebrow">MEMORY CORE</span><h1>Memory</h1><p>Persönlicher Kontext und Erinnerungen.</p></div></div><div className="luna-empty-state"><span>◌</span><strong>Memory-Verwaltung</strong><p>Die Memory-API ist hier noch nicht angebunden. Diese Seite zeigt deshalb keine erfundenen Erinnerungen an.</p></div></section><footer className="luna-footer"><span>LUNA · Personal AI Assistant</span><span className="footer-status"><i /> Memory</span></footer></section></main>;
+}
