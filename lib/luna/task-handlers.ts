@@ -82,7 +82,13 @@ export function createTaskItemHandlers(requireUser: RequireUser) {
       }
       const { data, error } = await supabase.from("tasks").update({ ...update, updated_at: new Date().toISOString() })
         .eq("id", id).eq("user_id", user.id).select().single();
-      if (error) return NextResponse.json({ error: "task not found" }, { status: 404 });
+      if (error) {
+        // PostgREST PGRST116 means .single() returned no row; other errors are real failures.
+        if (typeof error === "object" && error !== null && "code" in error && error.code === "PGRST116") {
+          return NextResponse.json({ error: "task not found" }, { status: 404 });
+        }
+        throw error;
+      }
       return NextResponse.json({ ok: true, task: data });
     } catch (error) {
       if (unauthorized(error)) return NextResponse.json({ error: "authentication required" }, { status: 401 });
