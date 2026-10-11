@@ -67,7 +67,7 @@ export async function DELETE(request: Request, { params }: Params) {
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 500 });
+    if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ error: "authentication required" }, { status: 401 });
     return NextResponse.json({ error: "could not delete task" }, { status: 500 });
   }
 }
