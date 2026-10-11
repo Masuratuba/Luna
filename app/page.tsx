@@ -1,4 +1,5 @@
 import LunaChatSecure from "./components/LunaChatSecure";
+import Link from "next/link";
 import { lunaAgents } from "../lib/luna/agents";
 import type { LunaAgentId } from "../lib/luna/agents";
 
@@ -47,7 +48,7 @@ export default async function Home({
       <div className="luna-overlay" />
       <section className="luna-content">
         <nav className="luna-topbar" aria-label="LUNA Navigation">
-          <a className="luna-nav-brand" href="/" aria-label="LUNA Startseite"><span>◐</span> LUNA</a>
+          <Link className="luna-nav-brand" href="/" aria-label="LUNA Startseite"><span>◐</span> LUNA</Link>
           <div className="luna-nav-links">
             <a className="active" href="/#chat" aria-current="page">Chat</a>
             <a href="/tasks">Aufgaben</a>
