@@ -28,6 +28,9 @@ export default function DashboardReference({ initialAgentId }: Props) {
   const [loading, setLoading] = useState(true);
   const [today, setToday] = useState("");
   const [active, setActive] = useState("Chat");
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [newTask, setNewTask] = useState("");
+  const [savingTask, setSavingTask] = useState(false);
 
   useEffect(() => {
     setToday(new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "2-digit", month: "long" }).format(new Date()));
@@ -43,6 +46,29 @@ export default function DashboardReference({ initialAgentId }: Props) {
     });
     return () => { mounted = false; };
   }, []);
+
+  async function createTask(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!newTask.trim() || savingTask) return;
+    setSavingTask(true);
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTask.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Aufgabe konnte nicht gespeichert werden.");
+      setNewTask("");
+      setTaskFormOpen(false);
+      const tasks = await readJson("/api/tasks");
+      setCounts((current) => ({ ...current, tasks: Array.isArray(tasks.tasks) ? tasks.tasks : [] }));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Aufgabe konnte nicht gespeichert werden.");
+    } finally {
+      setSavingTask(false);
+    }
+  }
 
   async function toggleTask(task: TaskItem) {
     if (!task.id) return;
@@ -96,7 +122,7 @@ export default function DashboardReference({ initialAgentId }: Props) {
 
             <section className="lr-lower-grid">
               <article className="lr-panel" id="tasks">
-                <div className="lr-panel-head"><div><span className="lr-kicker">DEIN TAG</span><h2>Aufgaben</h2></div><span className="lr-count">{loading ? "…" : counts.tasks.length + " gesamt"}</span></div>
+                <div className="lr-panel-head"><div><span className="lr-kicker">DEIN TAG</span><h2>Aufgaben</h2></div><div className="lr-panel-actions"><span className="lr-count">{loading ? "…" : counts.tasks.length + " gesamt"}</span><button className="lr-mini-action" type="button" onClick={() => setTaskFormOpen((open) => !open)} aria-label="Aufgabe hinzufügen">＋</button></div></div>{taskFormOpen && <form className="lr-inline-form" onSubmit={createTask}><input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Neue Aufgabe …" aria-label="Neue Aufgabe" maxLength={300} autoFocus /><button type="submit" disabled={savingTask || !newTask.trim()}>{savingTask ? "…" : "Speichern"}</button></form>}
                 {loading ? <p className="lr-muted">Daten werden geladen …</p> : counts.tasks.length ? <ul className="lr-task-list">{counts.tasks.slice(0, 4).map((task, i) => <li key={String(task.id ?? i)}><button className="lr-task-toggle" type="button" onClick={() => toggleTask(task)} disabled={!task.id} aria-label={task.status === "completed" ? "Aufgabe wieder öffnen" : "Aufgabe abschließen"}>{task.status === "completed" ? "✓" : "○"}</button><span className={task.status === "completed" ? "lr-task-done" : ""}>{task.title ?? task.name ?? "Aufgabe"}</span><small>{task.status === "completed" ? "Erledigt" : task.status === "in_progress" ? "In Arbeit" : "Offen"}</small></li>)}</ul> : <div className="lr-empty"><span>☑</span><b>Alles beginnt mit einem Plan</b><p>Deine gespeicherten Aufgaben erscheinen hier.</p></div>}
               </article>
               <article className="lr-panel" id="agents">
