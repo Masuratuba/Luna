@@ -82,7 +82,7 @@ export default function DashboardReference({ initialAgentId }: Props) {
               </article>
               <article className="lr-panel" id="agents">
                 <div className="lr-panel-head"><div><span className="lr-kicker">DEINE SPEZIALISTEN</span><h2>Agenten</h2></div><span className="lr-count">{lunaAgents.length} verfügbar</span></div>
-                <div className="lr-agent-list">{lunaAgents.slice(0, 4).map((agent, i) => <a key={agent.id} href={"/?agent=" + encodeURIComponent(agent.id) + "#chat"}><span className={"lr-agent-mark tone-" + (i % 5)}>{["✦","⌕","◌","◫","⌘"][i % 5]}</span><span><b>{agent.name}</b><small>{agent.description}</small></span><span className="lr-arrow">↗</span></a>)}</div>
+                <div className="lr-agent-list">{lunaAgents.map((agent, i) => <a key={agent.id} href={"/?agent=" + encodeURIComponent(agent.id) + "#chat"}><span className={"lr-agent-mark tone-" + (i % 5)}>{["✦","⌕","◌","◫","⌘"][i % 5]}</span><span><b>{agent.name}</b><small>{agent.description}</small></span><span className="lr-arrow">↗</span></a>)}</div>
               </article>
               <article className="lr-panel" id="projects">
                 <div className="lr-panel-head"><div><span className="lr-kicker">DEINE ARBEIT</span><h2>Projekte</h2></div><a className="lr-text-link" href="#chat">Öffnen ↗</a></div>
