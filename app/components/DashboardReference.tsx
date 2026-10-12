@@ -44,6 +44,23 @@ export default function DashboardReference({ initialAgentId }: Props) {
     return () => { mounted = false; };
   }, []);
 
+  async function toggleTask(task: TaskItem) {
+    if (!task.id) return;
+    const nextStatus = task.status === "completed" ? "todo" : "completed";
+    const response = await fetch("/api/tasks/" + encodeURIComponent(task.id), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      window.alert(data.error ?? "Aufgabe konnte nicht aktualisiert werden.");
+      return;
+    }
+    const tasks = await readJson("/api/tasks");
+    setCounts((current) => ({ ...current, tasks: Array.isArray(tasks.tasks) ? tasks.tasks : [] }));
+  }
+
   return (
     <main className="lr-scene" id="top">
       <div className="lr-space-art" aria-hidden="true">
@@ -80,7 +97,7 @@ export default function DashboardReference({ initialAgentId }: Props) {
             <section className="lr-lower-grid">
               <article className="lr-panel" id="tasks">
                 <div className="lr-panel-head"><div><span className="lr-kicker">DEIN TAG</span><h2>Aufgaben</h2></div><span className="lr-count">{loading ? "…" : counts.tasks.length + " gesamt"}</span></div>
-                {loading ? <p className="lr-muted">Daten werden geladen …</p> : counts.tasks.length ? <ul className="lr-task-list">{counts.tasks.slice(0, 4).map((task, i) => <li key={String(task.id ?? i)}><span className="lr-check">○</span><span>{task.title ?? task.name ?? "Aufgabe"}</span><small>{task.status ?? "Offen"}</small></li>)}</ul> : <div className="lr-empty"><span>☑</span><b>Alles beginnt mit einem Plan</b><p>Deine gespeicherten Aufgaben erscheinen hier.</p></div>}
+                {loading ? <p className="lr-muted">Daten werden geladen …</p> : counts.tasks.length ? <ul className="lr-task-list">{counts.tasks.slice(0, 4).map((task, i) => <li key={String(task.id ?? i)}><button className="lr-task-toggle" type="button" onClick={() => toggleTask(task)} disabled={!task.id} aria-label={task.status === "completed" ? "Aufgabe wieder öffnen" : "Aufgabe abschließen"}>{task.status === "completed" ? "✓" : "○"}</button><span className={task.status === "completed" ? "lr-task-done" : ""}>{task.title ?? task.name ?? "Aufgabe"}</span><small>{task.status === "completed" ? "Erledigt" : task.status === "in_progress" ? "In Arbeit" : "Offen"}</small></li>)}</ul> : <div className="lr-empty"><span>☑</span><b>Alles beginnt mit einem Plan</b><p>Deine gespeicherten Aufgaben erscheinen hier.</p></div>}
               </article>
               <article className="lr-panel" id="agents">
                 <div className="lr-panel-head"><div><span className="lr-kicker">DEINE SPEZIALISTEN</span><h2>Agenten</h2></div><span className="lr-count">{lunaAgents.length} verfügbar</span></div>
