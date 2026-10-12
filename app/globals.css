@@ -253,3 +253,22 @@ a { color: inherit; }
   .lr-nav{font-size:8px}
   .lr-nav em{font-size:8px}
 }
+
+
+/* Actual LunaChatSecure markup uses luna-* classes; keep mobile chat compact. */
+@media(max-width:620px){
+  .lr-chat-intro h2{font-size:20px;line-height:1.1;margin:8px 0 5px}
+  .lr-chat-intro p{font-size:10px;line-height:1.3}
+  .lr-chat-intro{padding-bottom:8px}
+  .lr-chat-live .luna-chat{border-radius:10px}
+  .lr-chat-live .luna-chat-header{padding:8px 10px;min-height:42px}
+  .lr-chat-live .luna-chat-header strong{font-size:13px}
+  .lr-chat-live .luna-messages{min-height:72px;max-height:120px;padding:8px;overflow:auto}
+  .lr-chat-live .luna-message{font-size:11px;line-height:1.4}
+  .lr-chat-live .luna-message>div{padding:9px 10px;max-width:100%}
+  .lr-chat-live .luna-input{padding:7px;gap:6px}
+  .lr-chat-live .luna-input input{font-size:12px;min-width:0}
+  .lr-chat-live .luna-input button{width:30px;height:30px;flex:0 0 30px}
+  .lr-lower-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lr-right-column{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
