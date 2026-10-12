@@ -180,7 +180,7 @@ export default function DashboardReference({ initialAgentId }: Props) {
                 <div className="lr-stat-line"><span>Gespeicherte Projekte</span><b>{loading ? "…" : counts.projects.length}</b></div><div className="lr-progress"><span style={{ width: counts.projects.length ? "70%" : "4%" }} /></div>
                 {projectFormOpen && <form className="lr-inline-form" onSubmit={createProject}><input value={newProject} onChange={(event) => setNewProject(event.target.value)} placeholder="Projektname …" aria-label="Projektname" maxLength={160} autoFocus /><button type="submit" disabled={savingTask || !newProject.trim()}>{savingTask ? "…" : "Speichern"}</button></form>}
                 {counts.projects.slice(0, 3).map((project, i) => <div className="lr-simple-row" key={String(project.id ?? i)}><b>{project.name ?? "Projekt"}</b><small>{project.status ?? "Aktiv"}</small></div>)}
-                {!loading && counts.projects.length === 0 && <p className="lr-muted">Noch keine Projekte gespeichert.</p>
+                {!loading && counts.projects.length === 0 && <p className="lr-muted">Noch keine Projekte gespeichert.</p>}
               </article>
               <article className="lr-panel" id="memory">
                 <div className="lr-panel-head"><div><span className="lr-kicker">WAS LUNA SICH MERKT</span><h2>Memory</h2></div><button className="lr-text-link lr-link-button" type="button" onClick={() => setMemoryFormOpen((open) => !open)}>{memoryFormOpen ? "Schließen" : "+ Merken"}</button></div>
