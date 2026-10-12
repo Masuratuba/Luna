@@ -31,6 +31,10 @@ export default function DashboardReference({ initialAgentId }: Props) {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [savingTask, setSavingTask] = useState(false);
+  const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [newProject, setNewProject] = useState("");
+  const [memoryFormOpen, setMemoryFormOpen] = useState(false);
+  const [newMemory, setNewMemory] = useState("");
 
   useEffect(() => {
     setToday(new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "2-digit", month: "long" }).format(new Date()));
@@ -68,6 +72,48 @@ export default function DashboardReference({ initialAgentId }: Props) {
     } finally {
       setSavingTask(false);
     }
+  }
+
+  async function createProject(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!newProject.trim() || savingTask) return;
+    setSavingTask(true);
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newProject.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Projekt konnte nicht gespeichert werden.");
+      setNewProject("");
+      setProjectFormOpen(false);
+      const projects = await readJson("/api/projects");
+      setCounts((current) => ({ ...current, projects: Array.isArray(projects.projects) ? projects.projects : [] }));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Projekt konnte nicht gespeichert werden.");
+    } finally { setSavingTask(false); }
+  }
+
+  async function createMemory(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!newMemory.trim() || savingTask) return;
+    setSavingTask(true);
+    try {
+      const response = await fetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "fact", content: newMemory.trim(), importance: 0.5 }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Erinnerung konnte nicht gespeichert werden.");
+      setNewMemory("");
+      setMemoryFormOpen(false);
+      const memories = await readJson("/api/memory");
+      setCounts((current) => ({ ...current, memories: Array.isArray(memories.memories) ? memories.memories : [] }));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Erinnerung konnte nicht gespeichert werden.");
+    } finally { setSavingTask(false); }
   }
 
   async function toggleTask(task: TaskItem) {
@@ -130,18 +176,23 @@ export default function DashboardReference({ initialAgentId }: Props) {
                 <div className="lr-agent-list">{lunaAgents.map((agent, i) => <a key={agent.id} href={"/?agent=" + encodeURIComponent(agent.id) + "#chat"}><span className={"lr-agent-mark tone-" + (i % 5)}>{["✦","⌕","◌","◫","⌘"][i % 5]}</span><span><b>{agent.name}</b><small>{agent.description}</small></span><span className="lr-arrow">↗</span></a>)}</div>
               </article>
               <article className="lr-panel" id="projects">
-                <div className="lr-panel-head"><div><span className="lr-kicker">DEINE ARBEIT</span><h2>Projekte</h2></div><a className="lr-text-link" href="#chat">Öffnen ↗</a></div>
-                <div className="lr-stat-line"><span>Gespeicherte Projekte</span><b>{loading ? "…" : counts.projects.length}</b></div><div className="lr-progress"><span style={{ width: counts.projects ? "70%" : "4%" }} /></div><p className="lr-muted">Behalte deine Vorhaben an einem Ort im Blick.</p>
+                <div className="lr-panel-head"><div><span className="lr-kicker">DEINE ARBEIT</span><h2>Projekte</h2></div><button className="lr-text-link lr-link-button" type="button" onClick={() => setProjectFormOpen((open) => !open)}>{projectFormOpen ? "Schließen" : "+ Projekt"}</button></div>
+                <div className="lr-stat-line"><span>Gespeicherte Projekte</span><b>{loading ? "…" : counts.projects.length}</b></div><div className="lr-progress"><span style={{ width: counts.projects.length ? "70%" : "4%" }} /></div>
+                {projectFormOpen && <form className="lr-inline-form" onSubmit={createProject}><input value={newProject} onChange={(event) => setNewProject(event.target.value)} placeholder="Projektname …" aria-label="Projektname" maxLength={160} autoFocus /><button type="submit" disabled={savingTask || !newProject.trim()}>{savingTask ? "…" : "Speichern"}</button></form>}
+                {counts.projects.slice(0, 3).map((project, i) => <div className="lr-simple-row" key={String(project.id ?? i)}><b>{project.name ?? "Projekt"}</b><small>{project.status ?? "Aktiv"}</small></div>)}
+                {!loading && counts.projects.length === 0 && <p className="lr-muted">Noch keine Projekte gespeichert.</p>
               </article>
               <article className="lr-panel" id="memory">
-                <div className="lr-panel-head"><div><span className="lr-kicker">WAS LUNA SICH MERKT</span><h2>Memory</h2></div><a className="lr-text-link" href="#chat">Mit Luna sprechen ↗</a></div>
-                <div className="lr-memory-count"><span className="lr-icon purple">✧</span><div><b>{loading ? "…" : counts.memories.length}</b><small>gespeicherte Erinnerungen</small></div></div><p className="lr-muted">Wichtige Informationen bleiben in deinem geschützten Memory.</p>
+                <div className="lr-panel-head"><div><span className="lr-kicker">WAS LUNA SICH MERKT</span><h2>Memory</h2></div><button className="lr-text-link lr-link-button" type="button" onClick={() => setMemoryFormOpen((open) => !open)}>{memoryFormOpen ? "Schließen" : "+ Merken"}</button></div>
+                <div className="lr-memory-count"><span className="lr-icon purple">✧</span><div><b>{loading ? "…" : counts.memories.length}</b><small>gespeicherte Erinnerungen</small></div></div>
+                {memoryFormOpen && <form className="lr-inline-form" onSubmit={createMemory}><input value={newMemory} onChange={(event) => setNewMemory(event.target.value)} placeholder="Was soll Luna merken? …" aria-label="Neue Erinnerung" maxLength={10000} autoFocus /><button type="submit" disabled={savingTask || !newMemory.trim()}>{savingTask ? "…" : "Speichern"}</button></form>}
+                {counts.memories.slice(0, 2).map((memory, i) => <div className="lr-simple-row" key={String(memory.id ?? i)}><span>{memory.content ?? "Erinnerung"}</span><small>{memory.type ?? "fact"}</small></div>)}
               </article>
             </section>
           </section>
 
           <aside className="lr-right-column">
-            <section className="lr-side-card lr-today-card"><div className="lr-panel-head"><div><span className="lr-kicker">ÜBERBLICK</span><h2>Heute</h2></div><span className="lr-today-symbol">✧</span></div><p className="lr-side-date">{today || "Dein Tag"}</p><div className="lr-today-stat"><span>Offene Aufgaben</span><b>{loading ? "…" : counts.tasks.length}</b></div><div className="lr-today-stat"><span>Aktive Projekte</span><b>{loading ? "…" : counts.projects}</b></div><div className="lr-today-stat"><span>Memory-Einträge</span><b>{loading ? "…" : counts.memories}</b></div></section>
+            <section className="lr-side-card lr-today-card"><div className="lr-panel-head"><div><span className="lr-kicker">ÜBERBLICK</span><h2>Heute</h2></div><span className="lr-today-symbol">✧</span></div><p className="lr-side-date">{today || "Dein Tag"}</p><div className="lr-today-stat"><span>Offene Aufgaben</span><b>{loading ? "…" : counts.tasks.length}</b></div><div className="lr-today-stat"><span>Aktive Projekte</span><b>{loading ? "…" : counts.projects.length}</b></div><div className="lr-today-stat"><span>Memory-Einträge</span><b>{loading ? "…" : counts.memories.length}</b></div></section>
             <section className="lr-side-card" id="tools"><div className="lr-panel-head"><div><span className="lr-kicker">DIREKT STARTEN</span><h2>Schnellzugriffe</h2></div></div><div className="lr-shortcuts"><a href="#chat"><span className="lr-shortcut-icon blue">✧</span><span><b>Mit Luna chatten</b><small>Frage stellen oder Idee planen</small></span><strong>↗</strong></a><a href="#tasks"><span className="lr-shortcut-icon violet">☑</span><span><b>Aufgaben ansehen</b><small>Deine nächsten Schritte</small></span><strong>↗</strong></a><a href="#agents"><span className="lr-shortcut-icon cyan">♙</span><span><b>Agent auswählen</b><small>Passenden Spezialisten öffnen</small></span><strong>↗</strong></a><a href="#memory"><span className="lr-shortcut-icon green">✧</span><span><b>Memory öffnen</b><small>Wichtiges wiederfinden</small></span><strong>↗</strong></a></div></section>
             <section className="lr-side-card lr-side-tasks"><div className="lr-panel-head"><div><span className="lr-kicker">ALS NÄCHSTES</span><h2>Aufgaben</h2></div><a className="lr-text-link" href="#tasks">Alle ↗</a></div>{loading ? <p className="lr-muted">Wird geladen …</p> : counts.tasks.length ? <ul className="lr-task-list">{counts.tasks.slice(0, 3).map((task, i) => <li key={String(task.id ?? "side-" + i)}><span className="lr-check">○</span><span>{task.title ?? task.name ?? "Aufgabe"}</span></li>)}</ul> : <div className="lr-empty lr-empty-small"><span>✓</span><p>Keine Aufgaben geladen.</p></div>}</section>
             <div className="lr-right-status"><i /> Deine Daten werden geschützt verarbeitet.</div>
