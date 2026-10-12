@@ -272,3 +272,27 @@ a { color: inherit; }
   .lr-lower-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .lr-right-column{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Match the reference dashboard: the shared chat component has its own tall default height. */
+.lr-chat-live .luna-chat{height:clamp(220px,34vh,330px);min-height:0;margin:0 auto 0;border-radius:13px}
+.lr-chat-live .luna-messages{min-height:0;max-height:none;flex:1;overflow-y:auto}
+@media(max-width:620px){
+  .lr-chat-live .luna-chat{height:158px;min-height:158px;margin:0;border-radius:10px}
+  .lr-chat-live .luna-chat-header{height:35px;min-height:35px;padding:5px 9px}
+  .lr-chat-live .luna-chat-header strong{font-size:11px}
+  .lr-chat-live .luna-chat-header span{font-size:9px;margin-left:6px}
+  .lr-chat-live .luna-chat-header small{display:none}
+  .lr-chat-live .luna-messages{height:78px;min-height:78px;max-height:78px;flex:0 0 78px;padding:7px;gap:5px}
+  .lr-chat-live .luna-message{max-width:95%;padding:6px 8px;font-size:10px;line-height:1.3}
+  .lr-chat-live .luna-message>div{padding:0}
+  .lr-chat-live .luna-input{height:39px;min-height:39px;padding:4px 6px;gap:5px}
+  .lr-chat-live .luna-input input{font-size:10px;padding:5px 8px}
+  .lr-chat-live .luna-input button{width:27px;height:27px;flex:0 0 27px;font-size:15px}
+  .lr-chat-panel{padding:9px;margin-top:0}
+  .lr-chat-intro h2{font-size:20px;line-height:1.1;margin:7px 0 4px}
+  .lr-chat-intro p{font-size:9px;line-height:1.3}
+  .lr-chat-intro{padding-bottom:7px}
+  .lr-lower-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lr-right-column{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
