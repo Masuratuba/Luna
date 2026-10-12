@@ -6,7 +6,9 @@ import { lunaAgents, type LunaAgentId } from "../../lib/luna/agents";
 
 type Props = { initialAgentId: LunaAgentId };
 type TaskItem = { id?: string; title?: string; name?: string; status?: string };
-type Counts = { tasks: TaskItem[]; projects: number; memories: number };
+type ProjectItem = { id?: string; name?: string; status?: string };
+type MemoryItem = { id?: string; content?: string; type?: string };
+type Counts = { tasks: TaskItem[]; projects: ProjectItem[]; memories: MemoryItem[] };
 
 const navItems = [
   ["◉", "Chat", "#chat"], ["☑", "Aufgaben", "#tasks"], ["♙", "Agenten", "#agents"],
@@ -22,7 +24,7 @@ async function readJson(url: string) {
 }
 
 export default function DashboardReference({ initialAgentId }: Props) {
-  const [counts, setCounts] = useState<Counts>({ tasks: [], projects: 0, memories: 0 });
+  const [counts, setCounts] = useState<Counts>({ tasks: [], projects: [], memories: [] });
   const [loading, setLoading] = useState(true);
   const [today, setToday] = useState("");
   const [active, setActive] = useState("Chat");
@@ -34,8 +36,8 @@ export default function DashboardReference({ initialAgentId }: Props) {
       if (!mounted) return;
       setCounts({
         tasks: Array.isArray(tasks.tasks) ? tasks.tasks : Array.isArray(tasks.data) ? tasks.data : [],
-        projects: Array.isArray(projects.projects) ? projects.projects.length : 0,
-        memories: Array.isArray(memories.memories) ? memories.memories.length : 0,
+        projects: Array.isArray(projects.projects) ? projects.projects : [],
+        memories: Array.isArray(memories.memories) ? memories.memories : [],
       });
       setLoading(false);
     });
@@ -86,11 +88,11 @@ export default function DashboardReference({ initialAgentId }: Props) {
               </article>
               <article className="lr-panel" id="projects">
                 <div className="lr-panel-head"><div><span className="lr-kicker">DEINE ARBEIT</span><h2>Projekte</h2></div><a className="lr-text-link" href="#chat">Öffnen ↗</a></div>
-                <div className="lr-stat-line"><span>Gespeicherte Projekte</span><b>{loading ? "…" : counts.projects}</b></div><div className="lr-progress"><span style={{ width: counts.projects ? "70%" : "4%" }} /></div><p className="lr-muted">Behalte deine Vorhaben an einem Ort im Blick.</p>
+                <div className="lr-stat-line"><span>Gespeicherte Projekte</span><b>{loading ? "…" : counts.projects.length}</b></div><div className="lr-progress"><span style={{ width: counts.projects ? "70%" : "4%" }} /></div><p className="lr-muted">Behalte deine Vorhaben an einem Ort im Blick.</p>
               </article>
               <article className="lr-panel" id="memory">
                 <div className="lr-panel-head"><div><span className="lr-kicker">WAS LUNA SICH MERKT</span><h2>Memory</h2></div><a className="lr-text-link" href="#chat">Mit Luna sprechen ↗</a></div>
-                <div className="lr-memory-count"><span className="lr-icon purple">✧</span><div><b>{loading ? "…" : counts.memories}</b><small>gespeicherte Erinnerungen</small></div></div><p className="lr-muted">Wichtige Informationen bleiben in deinem geschützten Memory.</p>
+                <div className="lr-memory-count"><span className="lr-icon purple">✧</span><div><b>{loading ? "…" : counts.memories.length}</b><small>gespeicherte Erinnerungen</small></div></div><p className="lr-muted">Wichtige Informationen bleiben in deinem geschützten Memory.</p>
               </article>
             </section>
           </section>
