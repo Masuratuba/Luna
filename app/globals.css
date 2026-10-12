@@ -326,3 +326,22 @@ a { color: inherit; }
   .lr-chat-live .luna-messages{height:78px;min-height:78px;max-height:78px;flex:0 0 78px}
   .lr-chat-live .luna-input{height:39px;min-height:39px;max-height:39px;flex:0 0 39px}
 }
+
+/* Functional dashboard controls — keep the existing reference styling. */
+.lr-panel-actions{display:flex;align-items:center;gap:8px}
+.lr-mini-action{display:grid;place-items:center;width:25px;height:25px;border:1px solid #4d85df66;border-radius:7px;background:#10264a;color:#bcd7ff;font-size:18px;line-height:1;cursor:pointer}
+.lr-mini-action:hover{background:#1b3b70}
+.lr-task-toggle{flex:0 0 22px;width:22px;height:22px;display:grid;place-items:center;border:1px solid #568ce4;border-radius:6px;background:#0b1b36;color:#9ec5ff;cursor:pointer}
+.lr-task-toggle.is-complete{background:#12402f;border-color:#2c9c70;color:#7af0b8}
+.lr-task-done{text-decoration:line-through;opacity:.65}
+.lr-inline-form{display:flex;gap:6px;align-items:center;margin:8px 0 10px}
+.lr-inline-form input{flex:1;min-width:0;width:0;background:#030a18;border:1px solid #355783;border-radius:7px;color:#edf4ff;padding:8px 9px;font-size:11px;outline:none}
+.lr-inline-form input:focus{border-color:#6aa5ff}
+.lr-inline-form button{flex:0 0 auto;border:1px solid #3e7fe4;border-radius:7px;background:#17488e;color:#fff;padding:8px 10px;font-size:10px;cursor:pointer}
+.lr-inline-form button:disabled{opacity:.5;cursor:wait}
+.lr-simple-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;border-top:1px solid #759ee21a;padding:8px 0;font-size:10px;color:#dce8ff}
+.lr-simple-row b{font-size:10px;font-weight:600}
+.lr-simple-row span{min-width:0;overflow-wrap:anywhere}
+.lr-simple-row small{color:#8da2c7;font-size:9px;flex:0 0 auto}
+.lr-link-button{border:0;background:transparent;padding:0;cursor:pointer;font:inherit;color:#9bc2ff}
+.lr-link-button:hover{color:#fff}
