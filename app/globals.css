@@ -351,3 +351,15 @@ a { color: inherit; }
 .lr-memory-actions button,.lr-inline-form button[type="button"]{border:1px solid #45658f;border-radius:6px;background:#0b1b36;color:#bcd7ff;padding:5px 8px;font-size:9px;cursor:pointer}
 .lr-memory-actions button:hover,.lr-inline-form button[type="button"]:hover{background:#17345f}
 .lr-memory-actions button:disabled{opacity:.45;cursor:not-allowed}
+
+
+/* Microsoft Outlook connection card — matches Luna's existing space dashboard. */
+.lr-ms-indicator{display:inline-flex;align-items:center;gap:5px;color:#f0c879;font-size:9px;white-space:nowrap}
+.lr-ms-indicator i{width:6px;height:6px;border-radius:50%;background:#f0c879;box-shadow:0 0 8px #f0c87980}
+.lr-ms-indicator.connected{color:#75e8b4}
+.lr-ms-indicator.connected i{background:#49e59b;box-shadow:0 0 8px #49e59b}
+.lr-ms-account{font-size:11px;color:#dce8ff;overflow-wrap:anywhere;margin:5px 0}
+.lr-ms-connect{display:inline-flex;align-items:center;justify-content:center;margin:7px 0 5px;padding:8px 11px;border:1px solid #4389ef;border-radius:8px;background:linear-gradient(110deg,#17488e,#12325f);color:#fff;text-decoration:none;font-size:10px;font-weight:600}
+.lr-ms-connect:hover{background:#2059a5}
+.lr-ms-refresh{display:block;margin-top:7px;padding:5px 0;border:0;background:transparent;color:#9bc2ff;font-size:9px;cursor:pointer}
+.lr-ms-refresh:disabled{opacity:.5;cursor:wait}
