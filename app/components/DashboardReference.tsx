@@ -35,6 +35,8 @@ export default function DashboardReference({ initialAgentId }: Props) {
   const [newProject, setNewProject] = useState("");
   const [memoryFormOpen, setMemoryFormOpen] = useState(false);
   const [newMemory, setNewMemory] = useState("");
+  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
+  const [editingMemoryContent, setEditingMemoryContent] = useState("");
 
   useEffect(() => {
     setToday(new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "2-digit", month: "long" }).format(new Date()));
@@ -116,6 +118,40 @@ export default function DashboardReference({ initialAgentId }: Props) {
     } finally { setSavingTask(false); }
   }
 
+  async function updateMemory(id: string) {
+    if (!editingMemoryContent.trim() || savingTask) return;
+    setSavingTask(true);
+    try {
+      const response = await fetch("/api/memory/" + encodeURIComponent(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editingMemoryContent.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Erinnerung konnte nicht aktualisiert werden.");
+      setEditingMemoryId(null);
+      setEditingMemoryContent("");
+      const memories = await readJson("/api/memory");
+      setCounts((current) => ({ ...current, memories: Array.isArray(memories.memories) ? memories.memories : [] }));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Erinnerung konnte nicht aktualisiert werden.");
+    } finally { setSavingTask(false); }
+  }
+
+  async function deleteMemory(id: string) {
+    if (savingTask || !window.confirm("Diese Erinnerung wirklich löschen?")) return;
+    setSavingTask(true);
+    try {
+      const response = await fetch("/api/memory/" + encodeURIComponent(id), { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Erinnerung konnte nicht gelöscht werden.");
+      const memories = await readJson("/api/memory");
+      setCounts((current) => ({ ...current, memories: Array.isArray(memories.memories) ? memories.memories : [] }));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Erinnerung konnte nicht gelöscht werden.");
+    } finally { setSavingTask(false); }
+  }
+
   async function toggleTask(task: TaskItem) {
     if (!task.id) return;
     const nextStatus = task.status === "completed" ? "todo" : "completed";
@@ -186,7 +222,10 @@ export default function DashboardReference({ initialAgentId }: Props) {
                 <div className="lr-panel-head"><div><span className="lr-kicker">WAS LUNA SICH MERKT</span><h2>Memory</h2></div><button className="lr-text-link lr-link-button" type="button" onClick={() => setMemoryFormOpen((open) => !open)}>{memoryFormOpen ? "Schließen" : "+ Merken"}</button></div>
                 <div className="lr-memory-count"><span className="lr-icon purple">✧</span><div><b>{loading ? "…" : counts.memories.length}</b><small>gespeicherte Erinnerungen</small></div></div>
                 {memoryFormOpen && <form className="lr-inline-form" onSubmit={createMemory}><input value={newMemory} onChange={(event) => setNewMemory(event.target.value)} placeholder="Was soll Luna merken? …" aria-label="Neue Erinnerung" maxLength={10000} autoFocus /><button type="submit" disabled={savingTask || !newMemory.trim()}>{savingTask ? "…" : "Speichern"}</button></form>}
-                {counts.memories.slice(0, 2).map((memory, i) => <div className="lr-simple-row" key={String(memory.id ?? i)}><span>{memory.content ?? "Erinnerung"}</span><small>{memory.type ?? "fact"}</small></div>)}
+                {counts.memories.length === 0 && !loading && <p className="lr-muted">Noch keine Erinnerungen gespeichert.</p>}
+                {counts.memories.slice(0, 5).map((memory, i) => <div className="lr-simple-row" key={String(memory.id ?? i)}>
+                  <div className="lr-memory-entry">{editingMemoryId === memory.id ? <form className="lr-inline-form" onSubmit={(event) => { event.preventDefault(); if (memory.id) void updateMemory(memory.id); }}><input value={editingMemoryContent} onChange={(event) => setEditingMemoryContent(event.target.value)} aria-label="Erinnerung bearbeiten" maxLength={10000} autoFocus /><button type="submit" disabled={savingTask || !editingMemoryContent.trim()}>Speichern</button><button type="button" onClick={() => { setEditingMemoryId(null); setEditingMemoryContent(""); }}>Abbrechen</button></form> : <><span>{memory.content ?? "Erinnerung"}</span><small>{memory.type ?? "fact"}</small><div className="lr-memory-actions"><button type="button" onClick={() => { setEditingMemoryId(memory.id ?? null); setEditingMemoryContent(memory.content ?? ""); }} disabled={!memory.id || savingTask}>Bearbeiten</button><button type="button" onClick={() => { if (memory.id) void deleteMemory(memory.id); }} disabled={!memory.id || savingTask}>Löschen</button></div></>}</div>
+                </div>)}
               </article>
             </section>
           </section>

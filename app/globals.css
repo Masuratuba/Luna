@@ -345,3 +345,9 @@ a { color: inherit; }
 .lr-simple-row small{color:#8da2c7;font-size:9px;flex:0 0 auto}
 .lr-link-button{border:0;background:transparent;padding:0;cursor:pointer;font:inherit;color:#9bc2ff}
 .lr-link-button:hover{color:#fff}
+
+.lr-memory-entry{display:flex;flex-direction:column;gap:6px;min-width:0;width:100%}
+.lr-memory-actions{display:flex;gap:6px;justify-content:flex-end}
+.lr-memory-actions button,.lr-inline-form button[type="button"]{border:1px solid #45658f;border-radius:6px;background:#0b1b36;color:#bcd7ff;padding:5px 8px;font-size:9px;cursor:pointer}
+.lr-memory-actions button:hover,.lr-inline-form button[type="button"]:hover{background:#17345f}
+.lr-memory-actions button:disabled{opacity:.45;cursor:not-allowed}
