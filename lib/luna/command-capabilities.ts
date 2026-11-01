@@ -15,10 +15,10 @@ export type LunaCommand =
 export function parseLunaCommand(message: string): LunaCommand | null {
   const text = message.trim();
   const lower = text.toLocaleLowerCase("de-DE");
-  const mentionsOutlook = /\\b(outlook|e-mails?|mails?|kalender|kalendereinträge|termine)\\b/i.test(lower);
-  const asksToRead = /\\b(lade|lies|lese|zeige|prüfe|pruefe|hole|abrufe|übersicht|uebersicht)\\b/i.test(lower);
-  const negatedWrite = /\\b(keine|nicht|niemals|nichts)\\b.{0,35}\\b(senden|schicken|ändern|aendern|löschen|loeschen|erstellen|buchen)\\b/i.test(lower);
-  const positiveWrite = /\\b(sende|schicke|lösche|loesche|ändere|aendere|erstelle|buche)\\b/i.test(lower);
+  const mentionsOutlook = /\b(outlook|e-mails?|mails?|kalender|kalendereinträge|termine)\b/i.test(lower);
+  const asksToRead = /\b(lade|lies|lese|zeige|prüfe|pruefe|hole|abrufe|übersicht|uebersicht)\b/i.test(lower);
+  const negatedWrite = /\b(keine|nicht|niemals|nichts)\b.{0,35}\b(senden|schicken|ändern|aendern|löschen|loeschen|erstellen|buchen)\b/i.test(lower);
+  const positiveWrite = /\b(sende|schicke|lösche|loesche|ändere|aendere|erstelle|buche)\b/i.test(lower);
   if (mentionsOutlook && asksToRead && (!positiveWrite || negatedWrite)) return { kind: "outlook_read" };
   const forgetPrefix = /^(?:luna[, ]+)?(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+/i;
   if (forgetPrefix.test(text)) return { kind: "forget", query: text.replace(forgetPrefix, "").trim() };
