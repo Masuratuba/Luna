@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
       store: false,
       instructions: "Erstelle einen E-Mail-Entwurf aus der Nutzeranweisung. Antworte ausschließlich als gültiges JSON mit den Feldern to (Array mit Empfängeradressen), cc (Array), subject (String), body (String), missing (Array mit fehlenden Angaben). Erfinde niemals E-Mail-Adressen oder Fakten. Wenn kein Empfänger eindeutig genannt ist, lasse to leer und trage 'Empfängeradresse' in missing ein. Schreibe den Text in der Sprache der Anweisung.",
-      input: prompt,
+      input: `Bitte gib die Antwort als JSON zurück.\n\nNutzeranweisung:\n${prompt}`,
       text: { format: { type: "json_object" } },
     });
     let draft: Draft;
