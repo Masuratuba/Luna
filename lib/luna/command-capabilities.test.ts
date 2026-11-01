@@ -20,5 +20,13 @@ describe("Luna command capabilities", () => {
     assert.deepEqual(parseLunaCommand("Luna, denk weiter"), { kind: "think" });
     assert.deepEqual(parseLunaCommand("Luna, denke weiter"), { kind: "think" });
   });
+
+  it("parses read-only Outlook requests", () => {
+    assert.deepEqual(parseLunaCommand("Luna, lies meine letzten 5 E-Mails und meine nächsten 7 Kalendereinträge."), { kind: "outlook_read" });
+    assert.deepEqual(parseLunaCommand("Bitte zeige mir meinen Outlook-Kalender."), { kind: "outlook_read" });
+  });
+  it("does not route Outlook write requests to read-only access", () => {
+    assert.equal(parseLunaCommand("Luna, sende eine E-Mail über Outlook."), null);
+  });
   it("does not capture ordinary chat", () => assert.equal(parseLunaCommand("Wie geht es dir?"), null));
 });
