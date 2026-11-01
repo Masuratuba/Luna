@@ -80,7 +80,7 @@ export async function executeLunaCommand(command: LunaCommand, supabase: any, us
         "",
         "Kalender — nächste 7 Tage:",
         ...(eventLines.length ? eventLines : ["Keine Termine gefunden."]),
-      ].join("\\n");
+      ].join("\n");
       return { ok: true, reply, result: { readOnly: true, mailCount: mails.length, eventCount: events.length } };
     } catch (error) {
       const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
