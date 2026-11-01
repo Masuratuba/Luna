@@ -1,87 +1,19 @@
 "use client";
-
 import { useState } from "react";
 import { getLunaAgent, type LunaAgentId } from "../../lib/luna/agents";
-
-type Source = { title: string; url: string; snippet?: string };
-type Message = { role: "user" | "assistant"; content: string; sources?: Source[] };
-
-type Props = {
-  initialAgentId: LunaAgentId;
-};
-
-function isSafeSourceUrl(url: string) {
-  return /^https?:\/\//i.test(url);
-}
-
-export default function LunaChatSecure({ initialAgentId }: Props) {
-  const [agentId] = useState<LunaAgentId>(initialAgentId);
-  const agent = getLunaAgent(agentId) ?? getLunaAgent("luna")!;
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: `Hallo. Ich bin ${agent.name}. Woran arbeiten wir heute?` },
-  ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string>();
-
-  async function sendMessage(event: React.FormEvent) {
-    event.preventDefault();
-    const message = input.trim();
-    if (!message || loading) return;
-
-    setInput("");
-    setMessages((current) => [...current, { role: "user", content: message }]);
-    setLoading(true);
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, conversationId, agentId }),
-      });
-      const data = await response.json();
-      if (data.conversationId) setConversationId(data.conversationId);
-
-      const answer = data.reply ?? [data.error, data.detail].filter(Boolean).join(" — ") ?? "Keine Antwort erhalten.";
-      const sources = Array.isArray(data.sources)
-        ? data.sources.filter((source: Source) => typeof source?.title === "string" && isSafeSourceUrl(source?.url))
-        : [];
-      setMessages((current) => [...current, { role: "assistant", content: answer, sources }]);
-    } catch {
-      setMessages((current) => [...current, { role: "assistant", content: `Verbindung zu ${agent.name} fehlgeschlagen.` }]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="luna-chat">
-      <div className="luna-chat-header">
-        <div><strong>🌙 {agent.name}</strong><span><i /> Bereit</span></div>
-        <small>LUNA 0.2</small>
-      </div>
-      <div className="luna-messages" aria-live="polite">
-        {messages.map((message, index) => (
-          <div className={`luna-message ${message.role}`} key={`${message.role}-${index}`}>
-            <div>{message.content}</div>
-            {message.sources && message.sources.length > 0 && (
-              <div className="luna-sources" aria-label="Quellen">
-                <strong>Quellen</strong>
-                {message.sources.map((source) => (
-                  <a key={source.url} href={source.url} target="_blank" rel="noreferrer noopener">
-                    {source.title}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-        {loading && <div className="luna-message assistant">{agent.name} denkt …</div>}
-      </div>
-      <form className="luna-input" onSubmit={sendMessage}>
-        <input value={input} onChange={(event) => setInput(event.target.value)} placeholder={`Mit ${agent.name} sprechen …`} aria-label={`Nachricht an ${agent.name}`} autoComplete="off" />
-        <button type="submit" disabled={loading || !input.trim()} aria-label="Senden">↑</button>
-      </form>
-    </div>
-  );
+type Props={initialAgentId:LunaAgentId};
+type Draft={to:string[];cc:string[];subject:string;body:string};
+type Approval={id:string;token:string};
+type Msg={role:"user"|"assistant";content:string;sources?:{title:string;url:string}[];draft?:Draft;approval?:Approval;state?:"pending"|"sending"|"sent"|"cancelled"};
+const mailIntent=(s:string)=>/e-?mail/i.test(s)&&/schreib|verfass|entwerf|erstell|draft|send|sende|schick|antwort/i.test(s);
+export default function LunaChatSecure({initialAgentId}:Props){
+ const [agentId]=useState<LunaAgentId>(initialAgentId),agent=getLunaAgent(initialAgentId)??getLunaAgent("luna")!;
+ const [messages,setMessages]=useState<Msg[]>([{role:"assistant",content:`Hallo. Ich bin ${agent.name}. Woran arbeiten wir heute?`}]);
+ const [input,setInput]=useState(""),[loading,setLoading]=useState(false),[conversationId,setConversationId]=useState<string>();
+ async function sendMessage(e:React.FormEvent){e.preventDefault();const message=input.trim();if(!message||loading)return;setInput("");setMessages(v=>[...v,{role:"user",content:message}]);setLoading(true);
+ try{if(mailIntent(message)){const r=await fetch("/api/mail/draft",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request:message})});const d=await r.json();if(!r.ok)throw Error(d.error||"Entwurf fehlgeschlagen.");if(d.needsDetails){setMessages(v=>[...v,{role:"assistant",content:"Dafür brauche ich noch: "+(d.missing||[]).join(", ")+". Bitte ergänze die Angaben."}]);}else setMessages(v=>[...v,{role:"assistant",content:"Bitte prüfe den Entwurf. Ich sende erst nach deiner Bestätigung.",draft:d.draft,approval:d.approval,state:"pending"}]);}
+ else{const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,conversationId,agentId})});const d=await r.json();if(d.conversationId)setConversationId(d.conversationId);if(!r.ok)throw Error(d.error||"Anfrage fehlgeschlagen.");setMessages(v=>[...v,{role:"assistant",content:d.reply||"Keine Antwort erhalten.",sources:Array.isArray(d.sources)?d.sources.filter((s:any)=>typeof s?.title==="string"&&/^https?:\/\//i.test(s?.url)):[]}]);}}
+ catch(err){setMessages(v=>[...v,{role:"assistant",content:err instanceof Error?err.message:"Verbindung fehlgeschlagen."}]);}finally{setLoading(false);}}
+ async function sendEmail(i:number){const m=messages[i];if(!m.draft||!m.approval||m.state!=="pending")return;setMessages(v=>v.map((x,n)=>n===i?{...x,state:"sending"}:x));try{let r=await fetch("/api/approvals",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({operation:"approve",id:m.approval.id,token:m.approval.token})});let d=await r.json();if(!r.ok)throw Error(d.error||"Bestätigung fehlgeschlagen.");r=await fetch("/api/mail",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({operation:"send",...m.draft,approvalId:m.approval.id,confirmationToken:m.approval.token})});d=await r.json();if(!r.ok||!d.sent)throw Error(d.error||"Outlook-Versand fehlgeschlagen.");setMessages(v=>v.map((x,n)=>n===i?{...x,state:"sent",content:"E-Mail wurde zum Versand übergeben."}:x));}catch(err){setMessages(v=>v.map((x,n)=>n===i?{...x,state:"pending",content:"Versand fehlgeschlagen: "+(err instanceof Error?err.message:"Fehler")}:x));}}
+ return <div className="luna-chat"><div className="luna-chat-header"><div><strong>🌙 {agent.name}</strong><span><i/> Bereit</span></div><small>LUNA 0.2</small></div><div className="luna-messages" aria-live="polite">{messages.map((m,i)=><div className={`luna-message ${m.role}`} key={i}><div>{m.content}</div>{m.draft&&<div className="luna-sources"><strong>E-Mail-Vorschau</strong><div><b>An:</b> {m.draft.to.join(", ")}</div>{m.draft.cc.length>0&&<div><b>CC:</b> {m.draft.cc.join(", ")}</div>}<div><b>Betreff:</b> {m.draft.subject}</div><div style={{whiteSpace:"pre-wrap"}}>{m.draft.body}</div>{m.state==="pending"&&<div style={{display:"flex",gap:8,marginTop:12}}><button type="button" onClick={()=>void sendEmail(i)}>E-Mail senden</button><button type="button" onClick={()=>setMessages(v=>v.map((x,n)=>n===i?{...x,state:"cancelled",content:"Entwurf verworfen. Nichts wurde versendet."}:x))}>Verwerfen</button></div>}{m.state==="sending"&&<small>Versand läuft …</small>}</div>}{(m.sources?.length ?? 0)>0&&<div className="luna-sources"><strong>Quellen</strong>{(m.sources ?? []).map(s=><a key={s.url} href={s.url} target="_blank" rel="noreferrer noopener">{s.title}</a>)}</div>}</div>)}{loading&&<div className="luna-message assistant">{agent.name} denkt …</div>}</div><form className="luna-input" onSubmit={sendMessage}><input value={input} onChange={e=>setInput(e.target.value)} placeholder={`Mit ${agent.name} sprechen …`} aria-label={`Nachricht an ${agent.name}`} autoComplete="off"/><button type="submit" disabled={loading||!input.trim()} aria-label="Senden">↑</button></form></div>;
 }
