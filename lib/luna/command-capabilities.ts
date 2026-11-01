@@ -1,5 +1,6 @@
 import { parseMemoryUpdate, updateMemory } from "./memory/update";
 import { forgetMemory } from "./memory/forget";
+import { getMicrosoftGraphAccessToken } from "../integrations/microsoft";
 
 export type LunaCommand =
   | { kind: "forget"; query: string }
@@ -8,11 +9,17 @@ export type LunaCommand =
   | { kind: "verify"; target: string }
   | { kind: "next" }
   | { kind: "continue" }
-  | { kind: "think" };
+  | { kind: "think" }
+  | { kind: "outlook_read" };
 
 export function parseLunaCommand(message: string): LunaCommand | null {
   const text = message.trim();
   const lower = text.toLocaleLowerCase("de-DE");
+  const mentionsOutlook = /\\b(outlook|e-mails?|mails?|kalender|kalendereinträge|termine)\\b/i.test(lower);
+  const asksToRead = /\\b(lade|lies|lese|zeige|prüfe|pruefe|hole|abrufe|übersicht|uebersicht)\\b/i.test(lower);
+  const negatedWrite = /\\b(keine|nicht|niemals|nichts)\\b.{0,35}\\b(senden|schicken|ändern|aendern|löschen|loeschen|erstellen|buchen)\\b/i.test(lower);
+  const positiveWrite = /\\b(sende|schicke|lösche|loesche|ändere|aendere|erstelle|buche)\\b/i.test(lower);
+  if (mentionsOutlook && asksToRead && (!positiveWrite || negatedWrite)) return { kind: "outlook_read" };
   const forgetPrefix = /^(?:luna[, ]+)?(?:bitte\s+)?(?:vergiss|vergiß|lösche|loesche)(?:\s*,)?\s+/i;
   if (forgetPrefix.test(text)) return { kind: "forget", query: text.replace(forgetPrefix, "").trim() };
   const memoryUpdate = parseMemoryUpdate(text);
@@ -39,6 +46,48 @@ export async function executeLunaCommand(command: LunaCommand, supabase: any, us
     if (!result.ok && result.reason === "NOT_FOUND") return { ok: false, status: 404, reply: "Ich habe keine passende Erinnerung gefunden, die ich aktualisieren kann." };
     if (!result.ok) return { ok: false, status: 400, reply: "Sag mir bitte, was ich ändern soll und auf welchen neuen Wert." };
     return { ok: true, reply: "Aktualisiert. Die passende Erinnerung wurde geändert.", result };
+  }
+
+  if (command.kind === "outlook_read") {
+    try {
+      const accessToken = await getMicrosoftGraphAccessToken(userId);
+      const graphGet = async (path: string) => {
+        const response = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+          cache: "no-store",
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!response.ok) throw new Error(`MICROSOFT_GRAPH_HTTP_${response.status}`);
+        return response.json() as Promise<{ value?: any[] }>;
+      };
+      const now = new Date();
+      const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const [mail, calendar] = await Promise.all([
+        graphGet("/me/messages?$top=5&$select=subject,from,receivedDateTime,isRead&$orderby=receivedDateTime%20desc"),
+        graphGet(`/me/calendarView?startDateTime=${encodeURIComponent(now.toISOString())}&endDateTime=${encodeURIComponent(end.toISOString())}&$top=7&$select=subject,start,end,location,isAllDay&$orderby=start/dateTime`),
+      ]);
+      const mails = mail.value ?? [];
+      const events = calendar.value ?? [];
+      const date = (value?: string) => value ? new Date(value).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "Zeit unbekannt";
+      const mailLines = mails.map((item: any, index: number) => `${index + 1}. ${item.subject || "(Ohne Betreff)"} — ${item.from?.emailAddress?.name || item.from?.emailAddress?.address || "Absender unbekannt"} — ${date(item.receivedDateTime)}${item.isRead ? "" : " — ungelesen"}`);
+      const eventLines = events.map((item: any, index: number) => `${index + 1}. ${item.subject || "(Ohne Titel)"} — ${item.isAllDay ? "Ganztägig" : date(item.start?.dateTime)}${item.location?.displayName ? " — " + item.location.displayName : ""}`);
+      const reply = [
+        "Outlook wurde erfolgreich im Nur-Lese-Modus abgefragt. Es wurde nichts geändert und keine E-Mail gesendet.",
+        "",
+        "Letzte E-Mails:",
+        ...(mailLines.length ? mailLines : ["Keine E-Mails gefunden."]),
+        "",
+        "Kalender — nächste 7 Tage:",
+        ...(eventLines.length ? eventLines : ["Keine Termine gefunden."]),
+      ].join("\\n");
+      return { ok: true, reply, result: { readOnly: true, mailCount: mails.length, eventCount: events.length } };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      if (message === "MICROSOFT_NOT_CONNECTED") return { ok: false, status: 400, reply: "Outlook ist noch nicht verbunden. Bitte verbinde zuerst dein Microsoft-Konto." };
+      if (message.includes("HTTP_401") || message.includes("HTTP_403")) return { ok: false, status: 502, reply: "Microsoft hat den Outlook-Lesezugriff abgelehnt. Bitte verbinde Outlook erneut und bestätige die Leseberechtigung." };
+      return { ok: false, status: 502, reply: `Outlook konnte nicht gelesen werden (${message}). Es wurden keine Änderungen vorgenommen.` };
+    }
   }
 
   if (command.kind === "context") {
