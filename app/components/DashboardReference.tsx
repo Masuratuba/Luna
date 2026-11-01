@@ -39,6 +39,9 @@ export default function DashboardReference({ initialAgentId }: Props) {
   const [editingMemoryContent, setEditingMemoryContent] = useState("");
   const [microsoftStatus, setMicrosoftStatus] = useState<{ connected: boolean; accountEmail?: string | null; scopes?: string[]; error?: string } | null>(null);
   const [microsoftLoading, setMicrosoftLoading] = useState(true);
+  const [microsoftOverview, setMicrosoftOverview] = useState<{ mail: { id: string; subject: string; sender: string; receivedAt: string | null; preview: string; isRead: boolean }[]; events: { id: string; subject: string; start: string | null; end: string | null; timeZone: string; location: string | null; allDay: boolean; webLink: string | null }[] } | null>(null);
+  const [microsoftOverviewLoading, setMicrosoftOverviewLoading] = useState(false);
+  const [microsoftOverviewError, setMicrosoftOverviewError] = useState("");
 
   async function refreshMicrosoftStatus() {
     setMicrosoftLoading(true);
@@ -54,9 +57,25 @@ export default function DashboardReference({ initialAgentId }: Props) {
     }
   }
 
+  async function refreshMicrosoftOverview() {
+    setMicrosoftOverviewLoading(true);
+    setMicrosoftOverviewError("");
+    try {
+      const response = await fetch("/api/integrations/microsoft/overview", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Outlook-Daten konnten nicht geladen werden.");
+      setMicrosoftOverview({ mail: Array.isArray(data.mail) ? data.mail : [], events: Array.isArray(data.events) ? data.events : [] });
+    } catch (error) {
+      setMicrosoftOverviewError(error instanceof Error ? error.message : "Outlook-Daten konnten nicht geladen werden.");
+    } finally {
+      setMicrosoftOverviewLoading(false);
+    }
+  }
+
   useEffect(() => {
     setToday(new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "2-digit", month: "long" }).format(new Date()));
     void refreshMicrosoftStatus();
+    void refreshMicrosoftOverview();
     let mounted = true;
     Promise.all([readJson("/api/tasks"), readJson("/api/projects"), readJson("/api/memory")]).then(([tasks, projects, memories]) => {
       if (!mounted) return;
@@ -250,7 +269,7 @@ export default function DashboardReference({ initialAgentId }: Props) {
           <aside className="lr-right-column">
             <section className="lr-side-card lr-microsoft-card" id="microsoft">
               <div className="lr-panel-head"><div><span className="lr-kicker">VERBINDUNGEN</span><h2>Microsoft Outlook</h2></div><span className={microsoftStatus?.connected ? "lr-ms-indicator connected" : "lr-ms-indicator"}><i />{microsoftLoading ? "Prüfe …" : microsoftStatus?.connected ? "Verbunden" : "Nicht verbunden"}</span></div>
-              {microsoftStatus?.connected ? <><p className="lr-ms-account">{microsoftStatus.accountEmail || "Microsoft-Konto verbunden"}</p><p className="lr-muted">Outlook-Mail und Kalender sind mit Luna verknüpft.</p><button className="lr-ms-refresh" type="button" onClick={() => void refreshMicrosoftStatus()} disabled={microsoftLoading}>{microsoftLoading ? "Prüfe …" : "Status aktualisieren"}</button></> : <><p className="lr-muted">{microsoftStatus?.error ? microsoftStatus.error : "Verbinde dein Microsoft-Konto, damit Luna auf Outlook-Mail und Kalender zugreifen kann."}</p><a className="lr-ms-connect" href="/api/integrations/microsoft/start">Microsoft verbinden ↗</a><button className="lr-ms-refresh" type="button" onClick={() => void refreshMicrosoftStatus()} disabled={microsoftLoading}>Status prüfen</button></>}
+              {microsoftStatus?.connected ? <><p className="lr-ms-account">{microsoftStatus.accountEmail || "Microsoft-Konto verbunden"}</p><p className="lr-muted">Outlook-Mail und Kalender sind mit Luna verknüpft.</p><div className="lr-ms-actions"><button className="lr-ms-refresh" type="button" onClick={() => void refreshMicrosoftStatus()} disabled={microsoftLoading}>{microsoftLoading ? "Prüfe …" : "Status aktualisieren"}</button><button className="lr-ms-refresh" type="button" onClick={() => void refreshMicrosoftOverview()} disabled={microsoftOverviewLoading}>{microsoftOverviewLoading ? "Lade …" : "Mail & Kalender laden"}</button></div>{microsoftOverviewError && <p className="lr-muted" role="alert">{microsoftOverviewError}</p>}{microsoftOverview && <div className="lr-ms-overview"><div className="lr-ms-section"><b>Letzte E-Mails</b>{microsoftOverview.mail.length ? microsoftOverview.mail.map((item) => <div className="lr-ms-item" key={item.id}><span className={item.isRead ? "lr-ms-read" : "lr-ms-unread"}>{item.isRead ? "•" : "●"}</span><div><strong>{item.subject}</strong><small>{item.sender}{item.receivedAt ? " · " + new Date(item.receivedAt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : ""}</small><p>{item.preview}</p></div></div>) : <p className="lr-muted">Keine E-Mails gefunden.</p>}</div><div className="lr-ms-section"><b>Kalender · nächste 7 Tage</b>{microsoftOverview.events.length ? microsoftOverview.events.map((item) => <div className="lr-ms-item" key={item.id}><span>◷</span><div><strong>{item.subject}</strong><small>{item.allDay ? "Ganztägig" : item.start ? new Date(item.start).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "Zeit offen"}{item.location ? " · " + item.location : ""}</small></div></div>) : <p className="lr-muted">Keine Termine in den nächsten 7 Tagen.</p>}</div></div>}</> : <><p className="lr-muted">{microsoftStatus?.error ? microsoftStatus.error : "Verbinde dein Microsoft-Konto, damit Luna auf Outlook-Mail und Kalender zugreifen kann."}</p><a className="lr-ms-connect" href="/api/integrations/microsoft/start">Microsoft verbinden ↗</a><button className="lr-ms-refresh" type="button" onClick={() => void refreshMicrosoftStatus()} disabled={microsoftLoading}>Status prüfen</button></>}
             </section>
             <section className="lr-side-card lr-today-card"><div className="lr-panel-head"><div><span className="lr-kicker">ÜBERBLICK</span><h2>Heute</h2></div><span className="lr-today-symbol">✧</span></div><p className="lr-side-date">{today || "Dein Tag"}</p><div className="lr-today-stat"><span>Offene Aufgaben</span><b>{loading ? "…" : counts.tasks.length}</b></div><div className="lr-today-stat"><span>Aktive Projekte</span><b>{loading ? "…" : counts.projects.length}</b></div><div className="lr-today-stat"><span>Memory-Einträge</span><b>{loading ? "…" : counts.memories.length}</b></div></section>
             <section className="lr-side-card" id="tools"><div className="lr-panel-head"><div><span className="lr-kicker">DIREKT STARTEN</span><h2>Schnellzugriffe</h2></div></div><div className="lr-shortcuts"><a href="#chat"><span className="lr-shortcut-icon blue">✧</span><span><b>Mit Luna chatten</b><small>Frage stellen oder Idee planen</small></span><strong>↗</strong></a><a href="#tasks"><span className="lr-shortcut-icon violet">☑</span><span><b>Aufgaben ansehen</b><small>Deine nächsten Schritte</small></span><strong>↗</strong></a><a href="#agents"><span className="lr-shortcut-icon cyan">♙</span><span><b>Agent auswählen</b><small>Passenden Spezialisten öffnen</small></span><strong>↗</strong></a><a href="#memory"><span className="lr-shortcut-icon green">✧</span><span><b>Memory öffnen</b><small>Wichtiges wiederfinden</small></span><strong>↗</strong></a></div></section>
