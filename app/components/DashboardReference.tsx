@@ -37,9 +37,26 @@ export default function DashboardReference({ initialAgentId }: Props) {
   const [newMemory, setNewMemory] = useState("");
   const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
   const [editingMemoryContent, setEditingMemoryContent] = useState("");
+  const [microsoftStatus, setMicrosoftStatus] = useState<{ connected: boolean; accountEmail?: string | null; scopes?: string[]; error?: string } | null>(null);
+  const [microsoftLoading, setMicrosoftLoading] = useState(true);
+
+  async function refreshMicrosoftStatus() {
+    setMicrosoftLoading(true);
+    try {
+      const response = await fetch("/api/integrations/microsoft/status", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Microsoft-Status konnte nicht geladen werden.");
+      setMicrosoftStatus(data);
+    } catch (error) {
+      setMicrosoftStatus({ connected: false, error: error instanceof Error ? error.message : "Verbindung konnte nicht geprüft werden." });
+    } finally {
+      setMicrosoftLoading(false);
+    }
+  }
 
   useEffect(() => {
     setToday(new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "2-digit", month: "long" }).format(new Date()));
+    void refreshMicrosoftStatus();
     let mounted = true;
     Promise.all([readJson("/api/tasks"), readJson("/api/projects"), readJson("/api/memory")]).then(([tasks, projects, memories]) => {
       if (!mounted) return;
@@ -231,6 +248,10 @@ export default function DashboardReference({ initialAgentId }: Props) {
           </section>
 
           <aside className="lr-right-column">
+            <section className="lr-side-card lr-microsoft-card" id="microsoft">
+              <div className="lr-panel-head"><div><span className="lr-kicker">VERBINDUNGEN</span><h2>Microsoft Outlook</h2></div><span className={microsoftStatus?.connected ? "lr-ms-indicator connected" : "lr-ms-indicator"}><i />{microsoftLoading ? "Prüfe …" : microsoftStatus?.connected ? "Verbunden" : "Nicht verbunden"}</span></div>
+              {microsoftStatus?.connected ? <><p className="lr-ms-account">{microsoftStatus.accountEmail || "Microsoft-Konto verbunden"}</p><p className="lr-muted">Outlook-Mail und Kalender sind mit Luna verknüpft.</p><button className="lr-ms-refresh" type="button" onClick={() => void refreshMicrosoftStatus()} disabled={microsoftLoading}>{microsoftLoading ? "Prüfe …" : "Status aktualisieren"}</button></> : <><p className="lr-muted">{microsoftStatus?.error ? microsoftStatus.error : "Verbinde dein Microsoft-Konto, damit Luna auf Outlook-Mail und Kalender zugreifen kann."}</p><a className="lr-ms-connect" href="/api/integrations/microsoft/start">Microsoft verbinden ↗</a><button className="lr-ms-refresh" type="button" onClick={() => void refreshMicrosoftStatus()} disabled={microsoftLoading}>Status prüfen</button></>}
+            </section>
             <section className="lr-side-card lr-today-card"><div className="lr-panel-head"><div><span className="lr-kicker">ÜBERBLICK</span><h2>Heute</h2></div><span className="lr-today-symbol">✧</span></div><p className="lr-side-date">{today || "Dein Tag"}</p><div className="lr-today-stat"><span>Offene Aufgaben</span><b>{loading ? "…" : counts.tasks.length}</b></div><div className="lr-today-stat"><span>Aktive Projekte</span><b>{loading ? "…" : counts.projects.length}</b></div><div className="lr-today-stat"><span>Memory-Einträge</span><b>{loading ? "…" : counts.memories.length}</b></div></section>
             <section className="lr-side-card" id="tools"><div className="lr-panel-head"><div><span className="lr-kicker">DIREKT STARTEN</span><h2>Schnellzugriffe</h2></div></div><div className="lr-shortcuts"><a href="#chat"><span className="lr-shortcut-icon blue">✧</span><span><b>Mit Luna chatten</b><small>Frage stellen oder Idee planen</small></span><strong>↗</strong></a><a href="#tasks"><span className="lr-shortcut-icon violet">☑</span><span><b>Aufgaben ansehen</b><small>Deine nächsten Schritte</small></span><strong>↗</strong></a><a href="#agents"><span className="lr-shortcut-icon cyan">♙</span><span><b>Agent auswählen</b><small>Passenden Spezialisten öffnen</small></span><strong>↗</strong></a><a href="#memory"><span className="lr-shortcut-icon green">✧</span><span><b>Memory öffnen</b><small>Wichtiges wiederfinden</small></span><strong>↗</strong></a></div></section>
             <section className="lr-side-card lr-side-tasks"><div className="lr-panel-head"><div><span className="lr-kicker">ALS NÄCHSTES</span><h2>Aufgaben</h2></div><a className="lr-text-link" href="#tasks">Alle ↗</a></div>{loading ? <p className="lr-muted">Wird geladen …</p> : counts.tasks.length ? <ul className="lr-task-list">{counts.tasks.slice(0, 3).map((task, i) => <li key={String(task.id ?? "side-" + i)}><span className="lr-check">○</span><span>{task.title ?? task.name ?? "Aufgabe"}</span></li>)}</ul> : <div className="lr-empty lr-empty-small"><span>✓</span><p>Keine Aufgaben geladen.</p></div>}</section>
