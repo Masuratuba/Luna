@@ -1,0 +1,41 @@
+/* Visual reference alignment for the current responsive dashboard: luminous blue planet and glass panels. */
+.lr-space-art {
+  background:
+    radial-gradient(ellipse at 54% 25%, rgba(29,91,190,.34), transparent 32%),
+    radial-gradient(ellipse at 18% 64%, rgba(30,76,156,.18), transparent 30%),
+    radial-gradient(ellipse at 86% 46%, rgba(76,53,156,.16), transparent 28%),
+    linear-gradient(130deg,#02050f,#050b1c 48%,#030610);
+}
+.lr-space-stars {
+  opacity:.88;
+  background-image:
+    radial-gradient(#e8f3ff .8px,transparent 1.2px),
+    radial-gradient(#8cbcff .9px,transparent 1.4px),
+    radial-gradient(rgba(190,218,255,.7) .7px,transparent 1.2px);
+  background-size:71px 59px,113px 97px,157px 131px;
+  animation:lr-star-drift 32s linear infinite alternate;
+}
+.lr-space-cloud {
+  width:76vw;height:56vw;left:18%;top:-8%;
+  background:radial-gradient(ellipse,rgba(40,112,226,.3),rgba(44,79,166,.1) 38%,transparent 72%);
+  filter:blur(32px);
+}
+.lr-space-planet {
+  opacity:.62;
+  background:
+    radial-gradient(ellipse at 32% 23%,rgba(255,255,255,.95),transparent 7%),
+    radial-gradient(ellipse at 27% 25%,#d9f4ff 0,#73c1ff 8%,#347fe0 22%,#17478e 45%,#0a1d42 67%,#02050e 82%);
+  box-shadow:0 0 34px rgba(73,154,255,.72),0 0 110px rgba(31,100,230,.42),0 0 190px rgba(29,76,180,.2),inset -32px -24px 52px #01040d;
+}
+.lr-space-planet span { border-color:rgba(126,190,255,.55);box-shadow:0 0 18px rgba(54,139,255,.25); }
+.lr-space-orbit { border-color:rgba(106,174,255,.4);box-shadow:0 0 22px rgba(44,125,255,.13); }
+.lr-space-orbit-two { border-color:rgba(130,157,255,.24); }
+.lr-space-meteor { background:linear-gradient(90deg,rgba(210,238,255,.95),rgba(83,158,255,.48),transparent);box-shadow:0 0 14px rgba(83,158,255,.8); }
+.lr-chat-panel,.lr-panel,.lr-side-card {
+  border-color:rgba(104,155,237,.25);
+  box-shadow:inset 0 1px rgba(215,233,255,.045),0 14px 38px rgba(0,0,0,.26);
+}
+.lr-chat-panel:before { background:radial-gradient(circle,rgba(44,124,255,.2),transparent 68%); }
+.lr-nav[aria-current="page"],.lr-nav.active { background:linear-gradient(135deg,rgba(34,100,228,.32),rgba(104,68,190,.2)); }
+@keyframes lr-star-drift { from{transform:translate3d(0,0,0)} to{transform:translate3d(-8px,6px,0)} }
+@media(prefers-reduced-motion:reduce){.lr-space-stars{animation:none}}

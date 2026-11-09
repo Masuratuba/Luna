@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./luna-reference.css";
 
 export const metadata: Metadata = {
   title: "LUNA 0.2",
